@@ -1,0 +1,46 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from apps.api.middleware import BodySizeLimit
+from apps.api.routers import auth, health, papers, providers
+from scientrag.auth.secrets import get_fernet
+from scientrag.config import get_settings
+from scientrag.db.engine import get_engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    get_settings()
+    # Fail at startup, not on the first saved key, when SECRETS_KEY is malformed.
+    try:
+        get_fernet()
+    except ValueError as error:
+        raise RuntimeError(
+            "SECRETS_KEY must be a Fernet key (32 url-safe base64-encoded bytes). "
+            "See .env.example for how to generate one."
+        ) from error
+    yield
+    await get_engine().dispose()
+
+
+app = FastAPI(title="ScientRAG API", lifespan=lifespan)
+app.add_middleware(BodySizeLimit)
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(papers.router)
+app.include_router(providers.router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, error: RequestValidationError) -> JSONResponse:
+    """The default answer without "input": that field echoes what was sent, which
+    can be a password or a provider key."""
+    details = [
+        {key: value for key, value in item.items() if key != "input"} for item in error.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(details)})
