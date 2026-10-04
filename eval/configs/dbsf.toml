@@ -1,0 +1,9 @@
+# Merge the two searches by normalised score instead of by rank.
+name = "dbsf"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+
+[settings]
+search_fusion = "dbsf"

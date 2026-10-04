@@ -1,0 +1,5 @@
+# As golden-retrieval, but every question searches all the papers of the set.
+name = "golden-corpus"
+dataset = "golden"
+mode = "retrieval"
+scope = "corpus"

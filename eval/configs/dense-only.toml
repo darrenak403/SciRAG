@@ -1,0 +1,9 @@
+# Search by meaning alone, without the keyword search.
+name = "dense-only"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+
+[settings]
+search_fusion = "none"

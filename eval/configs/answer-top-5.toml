@@ -1,0 +1,11 @@
+# As answer-baseline, with 5 passages given to the model instead of 8.
+name = "answer-top-5"
+dataset = "qasper"
+mode = "answer"
+papers = 100
+seed = 7
+questions = 50
+judge = true
+
+[settings]
+context_chunks = 5

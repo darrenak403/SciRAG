@@ -1,0 +1,10 @@
+# Merge by normalised score, in search order: the effect of the fusion without reranking on top.
+name = "dbsf-no-rerank"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+
+[settings]
+search_fusion = "dbsf"
+rerank_enabled = false

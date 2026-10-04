@@ -1,0 +1,8 @@
+# A few papers and questions, to check that the evaluation itself works.
+name = "smoke"
+dataset = "qasper"
+mode = "answer"
+papers = 3
+seed = 7
+questions = 4
+judge = true

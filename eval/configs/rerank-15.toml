@@ -1,0 +1,11 @@
+# The fast model reranks 15 candidates instead of 30, on 100 questions picked by the seed.
+name = "rerank-15"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+questions = 100
+concurrency = 2
+
+[settings]
+rerank_candidates = 15

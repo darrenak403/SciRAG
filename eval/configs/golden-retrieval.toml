@@ -1,0 +1,4 @@
+# The project question set on real PDFs: each question searches its own paper.
+name = "golden-retrieval"
+dataset = "golden"
+mode = "retrieval"

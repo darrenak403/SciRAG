@@ -1,0 +1,8 @@
+# Full answers with the shipped settings, scored by a model, on a fixed sample of questions.
+name = "answer-baseline"
+dataset = "qasper"
+mode = "answer"
+papers = 100
+seed = 7
+questions = 50
+judge = true

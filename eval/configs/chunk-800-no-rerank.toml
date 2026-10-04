@@ -1,0 +1,11 @@
+# Chunks of up to 800 tokens, in search order: compared with no-rerank, which uses 400.
+name = "chunk-800-no-rerank"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+chunk_max_tokens = 800
+concurrency = 2
+
+[settings]
+rerank_enabled = false

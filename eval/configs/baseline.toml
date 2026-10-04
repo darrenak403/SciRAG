@@ -1,0 +1,6 @@
+# The settings the application ships with, on QASPER. Every other config changes one thing.
+name = "baseline"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7

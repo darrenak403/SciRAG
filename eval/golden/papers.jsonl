@@ -1,0 +1,12 @@
+{"key": "adam", "title": "Adam: A Method for Stochastic Optimization", "url": "https://arxiv.org/pdf/1412.6980v9"}
+{"key": "bert", "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding", "url": "https://arxiv.org/pdf/1810.04805v2"}
+{"key": "resnet", "title": "Deep Residual Learning for Image Recognition", "url": "https://arxiv.org/pdf/1512.03385v1"}
+{"key": "transformer", "title": "Attention Is All You Need", "url": "https://arxiv.org/pdf/1706.03762v7"}
+{"key": "batchnorm", "title": "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift", "url": "https://arxiv.org/pdf/1502.03167v3"}
+{"key": "gan", "title": "Generative Adversarial Networks", "url": "https://arxiv.org/pdf/1406.2661v1"}
+{"key": "seq2seq", "title": "Sequence to Sequence Learning with Neural Networks", "url": "https://arxiv.org/pdf/1409.3215v3"}
+{"key": "word2vec", "title": "Efficient Estimation of Word Representations in Vector Space", "url": "https://arxiv.org/pdf/1301.3781v3"}
+{"key": "rag", "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks", "url": "https://arxiv.org/pdf/2005.11401v4"}
+{"key": "dpr", "title": "Dense Passage Retrieval for Open-Domain Question Answering", "url": "https://arxiv.org/pdf/2004.04906v3"}
+{"key": "sbert", "title": "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks", "url": "https://arxiv.org/pdf/1908.10084v1"}
+{"key": "roberta", "title": "RoBERTa: A Robustly Optimized BERT Pretraining Approach", "url": "https://arxiv.org/pdf/1907.11692v1"}

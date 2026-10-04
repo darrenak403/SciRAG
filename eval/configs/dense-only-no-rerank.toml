@@ -1,0 +1,10 @@
+# Search by meaning alone, in search order: the effect of the keyword search without reranking on top.
+name = "dense-only-no-rerank"
+dataset = "qasper"
+mode = "retrieval"
+papers = 100
+seed = 7
+
+[settings]
+search_fusion = "none"
+rerank_enabled = false

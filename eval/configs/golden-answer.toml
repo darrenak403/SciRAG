@@ -1,0 +1,5 @@
+# Full answers on the project question set, scored by a model.
+name = "golden-answer"
+dataset = "golden"
+mode = "answer"
+judge = true
