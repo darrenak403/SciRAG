@@ -93,6 +93,8 @@ async def create_connection(payload: ConnectionCreate, user: CurrentUser, db: Db
         secret_encrypted=encrypt_secret(secret),
         secret_last4=last4,
     )
+    # The test records its token usage in a transaction of its own, which has to see the row.
+    await db.commit()
     await check_connection(db, connection)
     # An account's first working connection is used right away; later ones wait to be chosen.
     if user.active_connection_id is None and _usable(connection):

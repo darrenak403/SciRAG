@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from scientrag.auth.secrets import decrypt_secret
 from scientrag.db.models import ProviderConnection
+from scientrag.providers.base import Usage
+from scientrag.providers.capabilities import check_connection
 from scientrag.providers.errors import ProviderError
 
 # Made-up values in the shape of real credentials.
@@ -208,6 +210,32 @@ async def test_a_new_connection_is_tested_and_the_result_is_shown(alice: AsyncCl
 
     assert connection["capabilities"]["usable"] is True
     assert (await alice.get("/settings/providers")).json()[0]["capabilities"]["usable"] is True
+
+
+async def test_the_tokens_spent_testing_a_new_connection_are_counted(
+    alice: AsyncClient, monkeypatch
+):
+    class Provider:
+        def __init__(self) -> None:
+            self.usage: list[Usage] = []
+
+        async def aclose(self) -> None:
+            pass
+
+    async def check_provider(provider: Provider) -> dict:
+        provider.usage.append(Usage("fast", "small-model", 7, 3))
+        return {"usable": True, "checks": []}
+
+    monkeypatch.setattr("scientrag.providers.resolve.build_provider", lambda connection: Provider())
+    monkeypatch.setattr("scientrag.providers.capabilities.check_provider", check_provider)
+    monkeypatch.setattr("apps.api.routers.providers.check_connection", check_connection)
+
+    connection = await create(alice, GEMINI)
+
+    assert connection["capabilities"]["usable"] is True
+    assert (await alice.get("/auth/me")).json()["active_connection_id"] == connection["id"]
+    (row,) = (await alice.get("/settings/providers/usage")).json()
+    assert (row["model"], row["input_tokens"], row["output_tokens"]) == ("small-model", 7, 3)
 
 
 async def test_a_connection_that_fails_its_test_is_saved_but_not_used(
