@@ -24,9 +24,11 @@ docker compose up        # bật mọi thứ, migration tự chạy
 docker compose down      # tắt, dữ liệu giữ nguyên
 ```
 
-API chạy ở <http://127.0.0.1:8000>, tài liệu API ở <http://127.0.0.1:8000/docs>. Phoenix (xem trace của từng câu hỏi) ở <http://127.0.0.1:6006>.
+Giao diện web ở <http://localhost:3000>: đăng ký tài khoản, vào **Settings → Model providers** để thêm key model của bạn, rồi **Add papers**. API chạy ở <http://127.0.0.1:8000>, tài liệu API ở <http://127.0.0.1:8000/docs>. Phoenix (xem trace của từng câu hỏi) ở <http://127.0.0.1:6006>.
 
-Sửa code trong `src/` hoặc `apps/` thì API tự nạp lại; worker thì cần `docker compose restart worker`. Chỉ cần `docker compose build` khi đổi `pyproject.toml` hoặc `uv.lock`.
+Mở giao diện bằng đúng địa chỉ `localhost:3000`: ở chế độ dev, Next.js chặn script khi vào bằng tên máy khác.
+
+Sửa code trong `src/` hoặc `apps/api/` thì API tự nạp lại; worker thì cần `docker compose restart worker`. Sửa code trong `apps/web/` thì trang tự nạp lại. Chỉ cần `docker compose build` khi đổi `pyproject.toml` hoặc `uv.lock`; đổi `apps/web/package.json` thì `docker compose restart web` là đủ (service cài lại package khi khởi động).
 
 Lần đầu worker xử lý một PDF, nó tải model của parser (khoảng 500 MB) vào volume `models`; các lần sau không tải lại.
 
@@ -116,6 +118,14 @@ docker compose run --rm api ruff check .
 docker compose run --rm api ruff format .
 ```
 
+Giao diện web (cần service `web` đang chạy):
+
+```bash
+docker compose exec web npx tsc --noEmit
+docker compose exec web npx eslint app components lib
+docker compose build web      # chạy next build, lỗi type thì dừng
+```
+
 Test chạy trong image `worker` vì chỉ image này có parser PDF (chạy bằng `api` cũng được, khi đó nhóm test parser bị bỏ qua). Cần `postgres` và `qdrant` đang chạy. Test dùng database riêng (`scientrag_test`) và các collection Qdrant riêng, tạo và xoá mỗi lần chạy; dữ liệu dev không bị đụng tới.
 
 ## Migration
@@ -137,6 +147,7 @@ docker compose build
 ```text
 apps/api/        FastAPI: routers, schemas, dependencies
 apps/worker/     tiến trình chạy các workflow xử lý PDF
+apps/web/        giao diện Next.js: app (các trang), components, lib (gọi API, SSE, upload)
 src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  providers (Gemini, Bedrock, OpenAI-compatible), parsing, chunking,
                  index (Qdrant), ingestion (các bước và workflow), access (quyền đọc paper),
@@ -145,4 +156,5 @@ src/scientrag/   config, db (models, repositories, migrations), auth, storage,
 tests/           unit và integration
 eval/            bộ câu hỏi golden và cấu hình thí nghiệm
 docs/decisions/  quyết định kỹ thuật đã chốt
+docs/screenshots/ ảnh chụp các màn hình chính
 ```
