@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings
 
@@ -29,6 +30,8 @@ class Settings(BaseSettings):
     # Answering a question: passages each search (meaning, keywords) brings back,
     # how many of the merged list go to the reranker, and how many reach the model.
     search_candidates: int = 50
+    # How the two rankings are merged: rrf, dbsf, or none for the search by meaning alone.
+    search_fusion: Literal["rrf", "dbsf", "none"] = "rrf"
     rerank_candidates: int = 30
     context_chunks: int = 8
     context_max_tokens: int = 6000

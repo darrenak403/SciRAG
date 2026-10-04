@@ -7,10 +7,15 @@ no way to search a collection as a whole.
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from qdrant_client import models
 
 from scientrag.index.qdrant_index import BM25_MODEL, DENSE, SPARSE, get_client
+
+# How the two searches are merged. rrf: by rank. dbsf: by score, normalised per search.
+# none: no keyword search at all, only the search by meaning.
+Fusion = Literal["rrf", "dbsf", "none"]
 
 
 @dataclass(frozen=True)
@@ -29,6 +34,7 @@ async def search(
     query_vector: list[float],
     candidates: int,
     limit: int,
+    fusion: Fusion = "rrf",
 ) -> list[Hit]:
     """The passages of these papers closest to the query, best first.
 
@@ -49,22 +55,39 @@ async def search(
         ],
         must_not=[models.FieldCondition(key="kind", match=models.MatchValue(value="reference"))],
     )
-    result = await get_client().query_points(
-        collection,
-        prefetch=[
-            models.Prefetch(query=query_vector, using=DENSE, filter=allowed, limit=candidates),
-            models.Prefetch(
-                query=models.Document(text=query_text, model=BM25_MODEL),
-                using=SPARSE,
-                filter=allowed,
-                limit=candidates,
+    if fusion == "none":
+        result = await get_client().query_points(
+            collection,
+            query=query_vector,
+            using=DENSE,
+            query_filter=allowed,
+            limit=limit,
+            with_payload=["paper_id"],
+        )
+    else:
+        result = await get_client().query_points(
+            collection,
+            prefetch=[
+                models.Prefetch(query=query_vector, using=DENSE, filter=allowed, limit=candidates),
+                models.Prefetch(
+                    query=models.Document(text=query_text, model=BM25_MODEL),
+                    using=SPARSE,
+                    filter=allowed,
+                    limit=candidates,
+                ),
+            ],
+            query=models.FusionQuery(
+                fusion=models.Fusion.DBSF if fusion == "dbsf" else models.Fusion.RRF
             ),
-        ],
-        query=models.FusionQuery(fusion=models.Fusion.RRF),
-        limit=limit,
-        with_payload=["paper_id"],
-    )
-    return [
+            # Everything the two searches brought back: the cut to `limit` is made below,
+            # after equal scores have been put in a fixed order.
+            limit=2 * candidates,
+            with_payload=["paper_id"],
+        )
+    hits = [
         Hit(uuid.UUID(str(point.id)), uuid.UUID(point.payload["paper_id"]), point.score)
         for point in result.points
     ]
+    # Merging by rank gives equal scores often (first and fourth, fourth and first), and
+    # Qdrant returns equals in an order that changes from one call to the next.
+    return sorted(hits, key=lambda hit: (-hit.score, hit.chunk_id))[:limit]
