@@ -14,6 +14,8 @@ from scientrag.providers.errors import ProviderError, from_aws, from_http
         (404, "models/nope is not found for API version v1beta", "model_not_found"),
         (400, "The model `nope` does not exist (model_not_found)", "model_not_found"),
         (402, "Payment required", "quota_exceeded"),
+        (403, "This model cannot use part of your gift balance", "quota_exceeded"),
+        (403, "User's credit limit is insufficient", "quota_exceeded"),
         (429, "You exceeded your current quota (insufficient_quota)", "quota_exceeded"),
         (429, "Quota exceeded for metric: GenerateRequestsPerDayPerProject", "quota_exceeded"),
         (429, "Resource has been exhausted, try again later", "rate_limited"),

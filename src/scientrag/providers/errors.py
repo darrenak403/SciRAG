@@ -62,6 +62,9 @@ def from_http(
     """
     text = (message or "").lower()
     detail = _clip(message)
+    if status == 403 and any(word in text for word in ("quota", "balance", "credit")):
+        # Routers answer 403 for a key that is valid but has nothing left to spend on the model.
+        return ProviderError("quota_exceeded", detail)
     if status in (401, 403) or "api key not valid" in text or "api_key_invalid" in text:
         return ProviderError("invalid_key", detail)
     if status == 404 or "model_not_found" in text or "is not found for api version" in text:
