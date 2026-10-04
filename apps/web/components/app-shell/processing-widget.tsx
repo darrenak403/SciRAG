@@ -29,7 +29,8 @@ export function ProcessingWidget() {
   return (
     <section
       aria-label="Paper processing"
-      className="fixed right-4 bottom-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover text-popover-foreground shadow-md"
+      // Under the page header on a phone: at the bottom it would sit on the question box.
+      className="fixed top-14 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover text-popover-foreground shadow-md sm:top-auto sm:bottom-4"
     >
       <header className="flex items-center gap-2 px-3 py-2">
         <p className="flex-1 text-sm font-medium" aria-live="polite">

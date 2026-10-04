@@ -90,6 +90,10 @@ export function PaperTable({
               {paper.status === "FAILED" && (
                 <DropdownMenuItem onClick={() => onAction("retry", paper)}>Retry processing</DropdownMenuItem>
               )}
+              {/* For a paper the queue never took. One that is really waiting is refused by the server. */}
+              {paper.status === "UPLOADED" && (
+                <DropdownMenuItem onClick={() => onAction("retry", paper)}>Restart processing</DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={() => onAction("delete", paper)}>
                 Delete
