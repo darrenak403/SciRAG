@@ -1,0 +1,10 @@
+# The project questions over all twelve papers, in search order, merging with: none.
+name = "golden-corpus-none-no-rerank"
+dataset = "golden"
+mode = "retrieval"
+scope = "corpus"
+concurrency = 2
+
+[settings]
+search_fusion = "none"
+rerank_enabled = false

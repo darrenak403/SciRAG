@@ -1,0 +1,10 @@
+# The project questions over all twelve papers, in search order, merging with: dbsf.
+name = "golden-corpus-dbsf-no-rerank"
+dataset = "golden"
+mode = "retrieval"
+scope = "corpus"
+concurrency = 2
+
+[settings]
+search_fusion = "dbsf"
+rerank_enabled = false

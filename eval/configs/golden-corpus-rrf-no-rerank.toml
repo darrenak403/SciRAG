@@ -1,0 +1,10 @@
+# The project questions over all twelve papers, in search order, merging with: rrf.
+name = "golden-corpus-rrf-no-rerank"
+dataset = "golden"
+mode = "retrieval"
+scope = "corpus"
+concurrency = 2
+
+[settings]
+search_fusion = "rrf"
+rerank_enabled = false
