@@ -8,6 +8,8 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import anyio
+
 from scientrag.auth.secrets import decrypt_secret
 from scientrag.db.engine import get_sessionmaker
 from scientrag.db.models import ProviderConnection, User
@@ -36,6 +38,10 @@ def build_provider(connection: ProviderConnection) -> ModelProvider:
     return OpenAICompatibleProvider(connection.config["base_url"], secret["api_key"], models)
 
 
+# Longest that saving the usage and closing the provider may hold up a cancelled caller.
+CLEANUP_SECONDS = 10
+
+
 @asynccontextmanager
 async def connection_provider(connection: ProviderConnection) -> AsyncIterator[ModelProvider]:
     """A provider for this connection.
@@ -47,13 +53,15 @@ async def connection_provider(connection: ProviderConnection) -> AsyncIterator[M
     try:
         yield provider
     finally:
-        try:
-            if provider.usage:
-                async with get_sessionmaker()() as db:
-                    await usage_repo.add(db, connection.user_id, connection.id, provider.usage)
-                    await db.commit()
-        finally:
-            await provider.aclose()
+        # A cancelled caller (a reader who left mid-answer) still pays for the calls made.
+        with anyio.move_on_after(CLEANUP_SECONDS, shield=True):
+            try:
+                if provider.usage:
+                    async with get_sessionmaker()() as db:
+                        await usage_repo.add(db, connection.user_id, connection.id, provider.usage)
+                        await db.commit()
+            finally:
+                await provider.aclose()
 
 
 async def active_connection(user_id: uuid.UUID) -> ProviderConnection:
