@@ -20,6 +20,10 @@ x-app: &app
     - ./alembic.ini:/app/alembic.ini
     - ./pyproject.toml:/app/pyproject.toml
     - storage:/data/storage
+    # Evaluation: question sets and configs in, downloaded data and results out.
+    - ./eval:/app/eval
+    - ./eval-data:/app/eval-data
+    - ./eval-results:/app/eval-results
 
 services:
   postgres:
@@ -91,6 +95,9 @@ services:
       - ./pyproject.toml:/app/pyproject.toml
       - storage:/data/storage
       - models:/models
+      - ./eval:/app/eval
+      - ./eval-data:/app/eval-data
+      - ./eval-results:/app/eval-results
     # The parser peaks around 2.5 GB on a long paper; fail loudly rather than swap.
     mem_limit: 4g
     depends_on:
