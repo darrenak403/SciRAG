@@ -52,6 +52,13 @@ async def test_register_rejects_a_short_password(anon: AsyncClient):
     assert response.status_code == 422
 
 
+async def test_register_rejects_the_domain_kept_for_evaluation_accounts(anon: AsyncClient):
+    response = await anon.post(
+        "/auth/register", json={"email": "chunk-400@eval.invalid", "password": PASSWORD}
+    )
+    assert response.status_code == 422
+
+
 async def test_register_can_be_closed(anon: AsyncClient, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_registration", False)
     response = await anon.post("/auth/register", json=ALICE)

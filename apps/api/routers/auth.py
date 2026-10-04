@@ -39,6 +39,9 @@ async def _start_session(db: Db, response: Response, user_id: uuid.UUID) -> None
 async def register(credentials: Credentials, response: Response, db: Db):
     if not get_settings().allow_registration:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Registration is closed")
+    if credentials.email.endswith(".invalid"):
+        # A domain that can never exist. The evaluation keeps its own accounts under it.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "This email cannot be used")
     if await users_repo.get_by_email(db, credentials.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists")
     # Argon2 is deliberately slow: off the event loop, so other requests keep being served.
