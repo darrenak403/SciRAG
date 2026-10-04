@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     chunk_max_tokens: int = 400
     # Off: no model call to summarize each paper; the paper is found by its title and opening text.
     summarize_papers: bool = True
+    # Answering a question: passages each search (meaning, keywords) brings back,
+    # how many of the merged list go to the reranker, and how many reach the model.
+    search_candidates: int = 50
+    rerank_candidates: int = 30
+    context_chunks: int = 8
+    context_max_tokens: int = 6000
+    answer_max_tokens: int = 2048
+    # Off: passages go to the model in the order the search returned them.
+    rerank_enabled: bool = True
+    fast_model_timeout_seconds: float = 20
+    # Where traces of answered questions are sent (OTLP over HTTP). Unset: nowhere.
+    otlp_endpoint: str | None = None
 
 
 @lru_cache
