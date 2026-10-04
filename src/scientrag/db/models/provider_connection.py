@@ -25,3 +25,5 @@ class ProviderConnection(Entity, Base):
     secret_encrypted: Mapped[str] = mapped_column(Text)
     # Last four characters of the key, so the UI can tell connections apart.
     secret_last4: Mapped[str] = mapped_column(String(4))
+    # Result of the last capability test; null until the connection has been tested.
+    capabilities: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

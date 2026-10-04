@@ -49,6 +49,10 @@ class Paper(Entity, Base):
     error: Mapped[str | None] = mapped_column(Text)
     warnings: Mapped[list[Any]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The embedding model the paper's chunks were indexed with, and the Qdrant
+    # collection they are in. Both are null until the paper has been indexed.
+    embedding_model: Mapped[str | None] = mapped_column(String(255))
+    index_collection: Mapped[str | None] = mapped_column(String(255))
 
     author_links: Mapped[list[PaperAuthor]] = relationship(
         order_by=PaperAuthor.position, cascade="all, delete-orphan", lazy="selectin"
