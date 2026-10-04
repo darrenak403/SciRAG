@@ -84,6 +84,30 @@ Mỗi câu hỏi là một trace trong Phoenix (project `scientrag`) với các 
 | `RERANK_ENABLED` | `true` | Tắt để bỏ bước model nhanh xếp hạng lại các đoạn tìm được (bớt một lời gọi model mỗi câu hỏi). |
 | `CONTEXT_CHUNKS` | `8` | Số đoạn văn tối đa đưa cho model trả lời. |
 
+## Đo chất lượng
+
+Bộ đo chạy câu hỏi qua đúng đường mà câu hỏi của người dùng đi (`rag.engine.answer`), trên dữ liệu nạp vào các tài khoản riêng `chunk-<n>@eval.invalid`. Nó gọi model thật bằng key trong biến môi trường `GEMINI_API_KEY` (đặt trong `.env`), nên có tốn token.
+
+```bash
+# một cấu hình: nạp paper (lần đầu), chạy câu hỏi, in bảng và lưu vào eval-results/
+docker compose run --rm -e GIT_COMMIT=$(git rev-parse --short HEAD) api \
+  python -m scientrag.evaluation.run --config eval/configs/baseline.toml
+
+# so sánh hai lần chạy
+docker compose run --rm --no-deps api \
+  python -m scientrag.evaluation.report eval-results/<a>.json eval-results/<b>.json
+
+# xoá các tài khoản đo cùng paper, point và file của chúng
+docker compose run --rm api python -m scientrag.evaluation.run --clean
+```
+
+Hai bộ câu hỏi:
+
+- **QASPER**: câu hỏi trên paper NLP, có đánh dấu đoạn bằng chứng. Tải về `eval-data/` ở lần chạy đầu. Paper ở dạng văn bản nên không đo được parser.
+- **Golden** (`eval/golden/`): câu hỏi của dự án trên PDF thật, đi qua parser thật. Cấu hình dùng bộ này phải chạy bằng image `worker` (thay `api` bằng `worker` trong lệnh trên) ở lần đầu, để parse PDF. Thêm câu hỏi: thêm một dòng vào `factual.jsonl`, với `evidence_chunk_text` là các câu chép nguyên văn từ paper.
+
+Mỗi file trong `eval/configs/` là một thí nghiệm, đổi một thứ so với `baseline.toml` (các file `*-no-rerank` so với `no-rerank.toml`). Lượt nào có lỗi (`errors` khác 0 ở dòng đầu bảng, thường do key hết quota) thì chạy lại trước khi dùng số. `mode = "retrieval"` dừng ở bước chọn đoạn văn (rẻ); `mode = "answer"` chạy tới câu trả lời, và `judge = true` dùng model chấm thêm. Kết quả và cấu hình đã chốt: [docs/decisions/0002-eval-results-and-config.md](docs/decisions/0002-eval-results-and-config.md).
+
 ## Test và kiểm tra code
 
 ```bash
@@ -116,7 +140,9 @@ apps/worker/     tiến trình chạy các workflow xử lý PDF
 src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  providers (Gemini, Bedrock, OpenAI-compatible), parsing, chunking,
                  index (Qdrant), ingestion (các bước và workflow), access (quyền đọc paper),
-                 rag (tìm, xếp hạng, dựng ngữ cảnh, kiểm trích dẫn), telemetry (trace)
+                 rag (tìm, xếp hạng, dựng ngữ cảnh, kiểm trích dẫn), telemetry (trace),
+                 evaluation (bộ đo)
 tests/           unit và integration
+eval/            bộ câu hỏi golden và cấu hình thí nghiệm
 docs/decisions/  quyết định kỹ thuật đã chốt
 ```

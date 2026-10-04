@@ -299,21 +299,21 @@ Dựng bộ đánh giá trước khi tối ưu bất kỳ thứ gì.
 **Dữ liệu.**
 
 - **QASPER** (5.049 câu hỏi trên 1.585 paper NLP, có đánh dấu đoạn bằng chứng) để đo retrieval và chất lượng câu trả lời trên paper thật.
-- **Bộ golden tự xây:** 50–100 câu hỏi trên chính corpus của dự án, gồm cả ba loại câu hỏi, mỗi câu có chunk bằng chứng và câu trả lời tham chiếu. Đây là bộ quyết định khi hai nguồn mâu thuẫn.
+- **Bộ golden tự xây** (`eval/golden/`): câu hỏi trên PDF thật đi qua parser của dự án, mỗi câu có đoạn bằng chứng chép nguyên văn và câu trả lời tham chiếu. Hiện có 53 câu factual trên 12 paper; câu hỏi so sánh và tổng hợp thêm sau. Đây là bộ quyết định khi hai nguồn mâu thuẫn.
 
 **Metric.**
 
 | Tầng | Metric |
 | --- | --- |
 | Retrieval | Recall@k, MRR, nDCG@k (tự viết, so với chunk bằng chứng) |
-| Context | context precision, context recall (Ragas) |
-| Câu trả lời | faithfulness, answer relevance (Ragas) |
+| Context | context precision, context recall (model làm giám khảo, theo định nghĩa của Ragas) |
+| Câu trả lời | faithfulness, answer relevance (model làm giám khảo, theo định nghĩa của Ragas) |
 | Citation | tỉ lệ marker hợp lệ; tỉ lệ nhận định có nguồn thực sự chứng minh nó |
 | Vận hành | độ trễ từng bước, số token, chi phí mỗi câu hỏi |
 
 Định nghĩa các metric retrieval, tính trên từng câu hỏi rồi lấy trung bình cả bộ:
 
-- **Recall@k:** tỉ lệ chunk bằng chứng xuất hiện trong k kết quả đầu. Một câu hỏi có ba chunk bằng chứng mà tìm được hai thì Recall@k là 2/3.
+- **Recall@k:** tỉ lệ đoạn bằng chứng có chunk chứa nó trong k kết quả đầu. Một câu hỏi có ba đoạn bằng chứng mà tìm được hai thì Recall@k là 2/3.
 - **MRR:** 1 chia cho thứ hạng của chunk bằng chứng đầu tiên tìm được. Chunk đúng đứng thứ ba thì được 1/3.
 - **nDCG@k:** chất lượng thứ tự của cả k kết quả; chunk đúng càng ở trên điểm càng cao.
 
@@ -374,10 +374,16 @@ Các điểm sau chốt bằng eval, không chốt bằng cảm giác:
 | Parser | Docling so với Marker 2 fast, trên CPU, khoảng 20 paper mẫu có bảng và công thức | Marker có trả bounding box hay không |
 | Embedding | BGE-M3 trên CPU so với một model qua API | Ngân sách API; paper có được phép gửi ra ngoài hay không |
 | Reranker | `bge-reranker-v2-m3` trên CPU so với reranker qua API | Ngân sách độ trễ bên dưới |
-| Kích thước chunk | Khoảng 400 so với 800 token | |
-| Fusion | RRF so với DBSF | |
 | ColBERT | Thêm bước rescoring đa vector trong Qdrant | Chỉ thử khi cross-encoder chưa đủ |
-| Kiểm tra citation lúc chạy | Có hay không bước LLM đối chiếu từng câu với chunk được dẫn | Tỉ lệ citation sai đo được, độ trễ và chi phí chấp nhận được |
+
+**Đã chốt bằng eval** (số liệu và lý do: [docs/decisions/0002-eval-results-and-config.md](docs/decisions/0002-eval-results-and-config.md)):
+
+| Câu hỏi | Quyết định |
+| --- | --- |
+| Kích thước chunk | 400 token. Chunk 800 có recall cao hơn ở cùng số chunk nhưng thấp hơn ở cùng lượng token đưa vào model. |
+| Fusion | RRF. DBSF thấp hơn ở recall@5 và recall@8. |
+| Rerank | Bật, 30 ứng viên, 8 đoạn vào model. Rerank đưa recall@1 từ 0,37 lên 0,53. |
+| Kiểm tra citation lúc chạy | Không thêm. Marker hợp lệ 100%, 95–99% câu có trích dẫn được nguồn chứng minh. |
 
 **Benchmark CPU.** Ba hàng đầu được quyết bằng cách đo trên chính server sẽ triển khai, cùng lúc với chất lượng:
 
