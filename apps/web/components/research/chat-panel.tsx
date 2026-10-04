@@ -4,15 +4,19 @@ import { Loader2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { createContext, memo, useContext, useEffect, useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 
 import { CitationMarker } from "@/components/research/citation-marker";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { ChatMessage } from "@/lib/chat-runtime";
-import { CITATION_HREF, linkCitations } from "@/lib/citations";
+import { answerMarkdown, CITATION_HREF } from "@/lib/answer-markdown";
 import { plural } from "@/lib/format";
 import { providerProblem } from "@/lib/provider-errors";
 import type { Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+import "katex/dist/katex.min.css";
 
 const STARTERS = ["Summarize key findings", "Compare methodologies", "Find limitations"];
 
@@ -50,6 +54,9 @@ function AnswerLink({ href, children }: { href?: string; children?: React.ReactN
 // One fixed set: a new one on every render would build every marker anew, closing its
 // card and losing its state each time a piece of the answer arrives.
 const COMPONENTS: Components = { a: AnswerLink };
+// Formulas are typeset; one the typesetter cannot read is shown as written, not as an error.
+const MATH = [remarkMath];
+const TYPESET = [[rehypeKatex, { errorColor: "currentColor" }]] satisfies React.ComponentProps<typeof Markdown>["rehypePlugins"];
 
 // Memoised: while one answer streams in, the earlier ones are not parsed again.
 const Answer = memo(function Answer(props: AnswerProps) {
@@ -58,8 +65,13 @@ const Answer = memo(function Answer(props: AnswerProps) {
     <div className="answer text-sm leading-relaxed">
       <AnswerContext.Provider value={props}>
         {/* No images: a picture address written by the model would be fetched, and could carry text out. */}
-        <Markdown components={COMPONENTS} disallowedElements={["img"]}>
-          {linkCitations(props.message.content)}
+        <Markdown
+          components={COMPONENTS}
+          disallowedElements={["img"]}
+          remarkPlugins={MATH}
+          rehypePlugins={TYPESET}
+        >
+          {answerMarkdown(props.message.content)}
         </Markdown>
       </AnswerContext.Provider>
     </div>

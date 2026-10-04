@@ -181,6 +181,12 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+/* A long formula scrolls inside the answer instead of widening the page. */
+.answer .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25em;
+}
 .answer blockquote {
   border-left: 2px solid var(--border);
   padding-left: 0.75rem;
