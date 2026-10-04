@@ -35,6 +35,11 @@ class PaperOut(BaseModel):
     updated_at: datetime
 
 
+class PaperDetail(PaperOut):
+    # Written by the model while the paper was processed. None until that step is done.
+    summary: str | None = None
+
+
 class PaperPage(BaseModel):
     items: list[PaperOut]
     total: int

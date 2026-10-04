@@ -47,7 +47,7 @@ async def test_upload_stores_the_file_and_records_the_paper(alice: AsyncClient):
 
     detail = await alice.get(f"/papers/{paper['id']}")
     assert detail.status_code == 200
-    assert detail.json() == paper
+    assert detail.json() == {**paper, "summary": None}
 
 
 async def test_download_returns_the_uploaded_bytes(alice: AsyncClient):
@@ -160,7 +160,7 @@ async def test_edit_metadata(alice: AsyncClient):
     assert paper["authors"] == ["Ashish Vaswani", "Noam Shazeer"]
     assert paper["year"] == 2017
     assert paper["doi"] == "10.48550/arXiv.1706.03762"
-    assert (await alice.get(f"/papers/{paper_id}")).json() == paper
+    assert (await alice.get(f"/papers/{paper_id}")).json() == {**paper, "summary": None}
 
 
 async def test_edit_changes_only_the_fields_sent(alice: AsyncClient):
@@ -205,6 +205,7 @@ async def test_search_and_filter(alice: AsyncClient):
     assert await ids(year=2015, author="kingma") == {adam}
     assert await ids(status="UPLOADED") == {resnet, bert, adam}
     assert await ids(status="READY") == set()
+    assert await ids(status=["UPLOADED", "PROCESSING"]) == {resnet, bert, adam}
     # "%" is searched for literally, not treated as a wildcard.
     assert await ids(q="100%") == {adam}
     assert await ids(q="%") == {adam}

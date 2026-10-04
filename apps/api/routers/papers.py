@@ -17,6 +17,7 @@ from apps.api.schemas.papers import (
     ChunkOut,
     ChunkPage,
     IngestionRunOut,
+    PaperDetail,
     PaperOut,
     PaperPage,
     PaperUpdate,
@@ -181,7 +182,8 @@ async def list_papers(
     user: CurrentUser,
     db: Db,
     q: Annotated[Text | None, Query(max_length=200)] = None,
-    status_filter: Annotated[PaperStatus | None, Query(alias="status")] = None,
+    # May be given more than once: ?status=UPLOADED&status=PROCESSING.
+    status_filter: Annotated[list[PaperStatus] | None, Query(alias="status")] = None,
     year: Annotated[int | None, Query(ge=1000, le=2100)] = None,
     author: Annotated[Text | None, Query(max_length=200)] = None,
     sort: SortField = "added",
@@ -193,7 +195,7 @@ async def list_papers(
         db,
         user.id,
         q=q,
-        status=status_filter,
+        statuses=status_filter,
         year=year,
         author=author,
         sort=sort,
@@ -222,10 +224,12 @@ async def reindex_papers(user: CurrentUser, db: Db):
     return ReindexOut(queued=queued)
 
 
-@router.get("/{paper_id}", response_model=PaperOut)
+@router.get("/{paper_id}", response_model=PaperDetail)
 async def get_paper(paper_id: uuid.UUID, user: CurrentUser, db: Db):
     paper = await _get_or_404(db, user.id, paper_id)
-    return _out(paper, await _current_embedding_model(db, user))
+    out = PaperDetail.model_validate(_out(paper, await _current_embedding_model(db, user)))
+    out.summary = await ingestion_repo.summary(db, paper_id)
+    return out
 
 
 @router.delete("/{paper_id}", status_code=status.HTTP_204_NO_CONTENT)

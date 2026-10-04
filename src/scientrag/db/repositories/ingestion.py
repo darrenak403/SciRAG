@@ -5,7 +5,14 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.db.models import Chunk, IngestionRun, Paper, PaperSection, PaperStatus
+from scientrag.db.models import (
+    Chunk,
+    IngestionRun,
+    Paper,
+    PaperSection,
+    PaperStatus,
+    PaperSummary,
+)
 
 
 async def sections(db: AsyncSession, paper_id: uuid.UUID) -> list[PaperSection]:
@@ -15,6 +22,10 @@ async def sections(db: AsyncSession, paper_id: uuid.UUID) -> list[PaperSection]:
         .order_by(PaperSection.position)
     )
     return list(rows)
+
+
+async def summary(db: AsyncSession, paper_id: uuid.UUID) -> str | None:
+    return await db.scalar(select(PaperSummary.summary).where(PaperSummary.paper_id == paper_id))
 
 
 async def runs(db: AsyncSession, paper_id: uuid.UUID) -> list[IngestionRun]:

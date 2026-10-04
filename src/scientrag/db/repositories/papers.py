@@ -1,6 +1,7 @@
 """Paper queries. Every function takes owner_id: there is no lookup by paper id alone."""
 
 import uuid
+from collections.abc import Sequence
 from typing import Literal
 
 from sqlalchemy import func, select
@@ -60,7 +61,7 @@ async def list_papers(
     owner_id: uuid.UUID,
     *,
     q: str | None = None,
-    status: str | None = None,
+    statuses: Sequence[str] | None = None,
     year: int | None = None,
     author: str | None = None,
     sort: SortField = "added",
@@ -72,8 +73,8 @@ async def list_papers(
     conditions = [*_live(owner_id)]
     if q:
         conditions.append(Paper.title.icontains(q, autoescape=True))
-    if status:
-        conditions.append(Paper.status == status)
+    if statuses:
+        conditions.append(Paper.status.in_(statuses))
     if year is not None:
         conditions.append(Paper.year == year)
     if author:
