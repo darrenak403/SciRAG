@@ -16,7 +16,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { api, messageOf } from "@/lib/api-client";
 import { type ChatMessage, useResearchChat } from "@/lib/chat-runtime";
-import { takeFirstQuestion } from "@/lib/research";
+import { takeFirstQuestion, useRecentResearch } from "@/lib/research";
 import type { Chat, Source } from "@/lib/types";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useReadyPapers } from "@/lib/use-ready-papers";
@@ -25,6 +25,8 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
   const { sessionId } = use(params);
   const papers = useReadyPapers();
   const { messages, loadError, streaming, send, stop } = useResearchChat(sessionId);
+  // The session is named after its first question; the list of recent sessions hears of it first.
+  const recent = useRecentResearch();
   // Three columns need the room; below this width Sources and Evidence open over the chat.
   const wide = useMediaQuery("(min-width: 1024px)");
 
@@ -89,6 +91,8 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
     setQuestion("");
     void send(text);
   }
+
+  const title = recent?.find((known) => known.id === sessionId)?.title ?? chat?.title;
 
   if (missing || loadError) {
     return (
@@ -158,7 +162,7 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title={chat?.title ?? "New research"}>
+      <PageHeader title={title ?? "New research"}>
         {!wide && (
           <>
             <Button variant="outline" size="sm" onClick={() => setSheet("sources")}>
