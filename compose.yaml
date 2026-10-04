@@ -11,6 +11,8 @@ x-app: &app
     DATABASE_URL: postgresql+psycopg://scientrag:${POSTGRES_PASSWORD}@postgres:5432/scientrag
     STORAGE_DIR: /data/storage
     QDRANT_URL: http://qdrant:6333
+    # Set OTLP_ENDPOINT= (empty) in .env to send no traces.
+    OTLP_ENDPOINT: ${OTLP_ENDPOINT-http://phoenix:6006/v1/traces}
   volumes:
     - ./src:/app/src
     - ./apps:/app/apps
@@ -38,6 +40,17 @@ services:
     image: qdrant/qdrant:v1.19.0
     volumes:
       - qdrant_data:/qdrant/storage
+
+  # Shows what happened inside each answered question: the passages found, the
+  # ranking, the model calls. It holds questions and paper text, so the port is local only.
+  phoenix:
+    image: arizephoenix/phoenix:version-20.19.0
+    environment:
+      PHOENIX_WORKING_DIR: /data
+    ports:
+      - "127.0.0.1:6006:6006"
+    volumes:
+      - phoenix_data:/data
 
   migrate:
     <<: *app
@@ -90,6 +103,7 @@ services:
 
 volumes:
   models:
+  phoenix_data:
   postgres_data:
   qdrant_data:
   storage:

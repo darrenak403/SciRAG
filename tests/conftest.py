@@ -22,6 +22,8 @@ os.environ["SECRETS_KEY"] = Fernet.generate_key().decode()
 os.environ["ALLOW_REGISTRATION"] = "true"
 # Small, so the size-limit test does not have to build a 50 MB file.
 os.environ["MAX_UPLOAD_MB"] = "1"
+# Tests keep their traces in memory; nothing is sent to the tracing service.
+os.environ.pop("OTLP_ENDPOINT", None)
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
