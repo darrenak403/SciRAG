@@ -1,19 +1,17 @@
 """FastAPI dependencies shared by the routers."""
 
 from collections.abc import AsyncIterator
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from scientrag.auth.sessions import COOKIE_NAME, hash_token
-from scientrag.config import get_settings
 from scientrag.db.engine import get_sessionmaker
 from scientrag.db.models import User
 from scientrag.db.repositories import sessions as sessions_repo
+from scientrag.storage import get_storage
 from scientrag.storage.base import ObjectStorage
-from scientrag.storage.local import LocalStorage
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
@@ -35,11 +33,6 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-
-@lru_cache
-def get_storage() -> ObjectStorage:
-    return LocalStorage(get_settings().storage_dir)
 
 
 Storage = Annotated[ObjectStorage, Depends(get_storage)]
