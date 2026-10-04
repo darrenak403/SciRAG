@@ -2,7 +2,7 @@
 
 Hỏi đáp trên bài báo khoa học, có trích dẫn nguồn.
 
-Hiện có: đăng ký / đăng nhập, upload và quản lý thư viện PDF, kết nối tới nhà cung cấp model theo từng tài khoản (mỗi người nhập key của mình), và worker xử lý PDF: parse, chia chunk, embedding, index vào Qdrant. Phần hỏi đáp chưa có.
+Hiện có: đăng ký / đăng nhập, upload và quản lý thư viện PDF, kết nối tới nhà cung cấp model theo từng tài khoản (mỗi người nhập key của mình), worker xử lý PDF (parse, chia chunk, embedding, index vào Qdrant), và hỏi đáp trên các bài báo đã xử lý, có trích dẫn tới đúng đoạn văn. Chưa có giao diện web.
 
 ## Yêu cầu
 
@@ -24,7 +24,7 @@ docker compose up        # bật mọi thứ, migration tự chạy
 docker compose down      # tắt, dữ liệu giữ nguyên
 ```
 
-API chạy ở <http://127.0.0.1:8000>, tài liệu API ở <http://127.0.0.1:8000/docs>.
+API chạy ở <http://127.0.0.1:8000>, tài liệu API ở <http://127.0.0.1:8000/docs>. Phoenix (xem trace của từng câu hỏi) ở <http://127.0.0.1:6006>.
 
 Sửa code trong `src/` hoặc `apps/` thì API tự nạp lại; worker thì cần `docker compose restart worker`. Chỉ cần `docker compose build` khi đổi `pyproject.toml` hoặc `uv.lock`.
 
@@ -51,6 +51,38 @@ Cấu hình trong `.env` (đều có mặc định):
 | `CHUNK_MAX_TOKENS` | `400` | Kích thước tối đa của một chunk. |
 | `SUMMARIZE_PAPERS` | `true` | Tắt để không gọi model tóm tắt từng paper. |
 | `ALLOW_PRIVATE_PROVIDER_URLS` | `false` | Bật khi người dùng trỏ kết nối OpenAI-compatible vào router trong mạng nội bộ. |
+
+## Hỏi đáp
+
+Một cuộc trò chuyện gắn với một tập paper (`paper_ids`); câu hỏi chỉ được tìm trong các paper đó, và chỉ trong paper của chính tài khoản đang hỏi.
+
+```bash
+# tạo cuộc trò chuyện, rồi hỏi (cookie đăng nhập nằm trong file jar)
+curl -b jar -X POST localhost:8000/chats -H 'content-type: application/json' \
+  -d '{"paper_ids": ["<id của paper>"]}'
+curl -N -b jar -X POST localhost:8000/chats/<id>/messages -H 'content-type: application/json' \
+  -d '{"content": "Adam dùng beta1 mặc định là bao nhiêu?"}'
+```
+
+Câu trả lời về dưới dạng server-sent events:
+
+| Event | Nội dung |
+|-------|----------|
+| `sources` | Các đoạn văn đưa cho model, mỗi đoạn một nhãn `S1`, `S2`… kèm paper, trang, mục. |
+| `delta` | Từng mẩu chữ của câu trả lời, đúng như model viết ra. |
+| `done` | Bản cuối đã kiểm trích dẫn (nhãn không có trong `sources` bị bỏ), danh sách nhãn được dùng, và `outcome`: `answered`, `no_evidence` (không tìm thấy trong paper) hoặc `no_papers` (phạm vi không có paper nào đã xử lý xong). |
+| `error` | `code` và `message` khi nhà cung cấp model lỗi. Không có gì được lưu. |
+
+Chỉ khi có `done` thì câu hỏi và câu trả lời mới được lưu; người đọc ngắt kết nối giữa chừng thì lời gọi model dừng và không lưu gì. `GET /chats/{id}/messages` trả lịch sử kèm trích dẫn, `GET /chunks/{id}` trả nguyên văn đoạn được trích, `GET /chats/messages/{id}/retrieval` cho biết câu trả lời đó đã tìm và xếp hạng thế nào.
+
+Paper được index bằng model embedding khác với kết nối đang dùng thì không được tìm (vector khác không gian): gọi `POST /papers/reindex`.
+
+Mỗi câu hỏi là một trace trong Phoenix (project `scientrag`) với các bước `rewrite_question`, `retrieve`, `rerank`, `generate`. Trace chứa câu hỏi và các đoạn văn, nên cổng 6006 chỉ mở trên máy chạy Docker.
+
+| Biến | Mặc định | Ý nghĩa |
+|------|----------|---------|
+| `RERANK_ENABLED` | `true` | Tắt để bỏ bước model nhanh xếp hạng lại các đoạn tìm được (bớt một lời gọi model mỗi câu hỏi). |
+| `CONTEXT_CHUNKS` | `8` | Số đoạn văn tối đa đưa cho model trả lời. |
 
 ## Test và kiểm tra code
 
@@ -83,7 +115,8 @@ apps/api/        FastAPI: routers, schemas, dependencies
 apps/worker/     tiến trình chạy các workflow xử lý PDF
 src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  providers (Gemini, Bedrock, OpenAI-compatible), parsing, chunking,
-                 index (Qdrant), ingestion (các bước và workflow)
+                 index (Qdrant), ingestion (các bước và workflow), access (quyền đọc paper),
+                 rag (tìm, xếp hạng, dựng ngữ cảnh, kiểm trích dẫn), telemetry (trace)
 tests/           unit và integration
 docs/decisions/  quyết định kỹ thuật đã chốt
 ```
