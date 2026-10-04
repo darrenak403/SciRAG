@@ -33,6 +33,7 @@ import { api, messageOf } from "@/lib/api-client";
 import { plural } from "@/lib/format";
 import { forget, useProcessing } from "@/lib/processing-store";
 import type { Paper, PaperPage } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 const TYPING_PAUSE_MS = 300;
@@ -130,7 +131,8 @@ export default function LibraryPage() {
         </Button>
       </PageHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      {/* Room under the list while papers are prepared: the widget in the corner would cover the pager. */}
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4", processing.length > 0 && "sm:pb-80")}>
         {result && result.total === 0 && !filtered ? (
           <div className="m-auto flex max-w-sm flex-col items-center gap-3 text-center">
             <h2 className="text-base font-medium">Your research library is empty</h2>
