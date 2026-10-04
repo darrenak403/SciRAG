@@ -1,0 +1,71 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local data: uploaded papers, parsed output, service volumes
+/data/
+/storage/
+/uploads/
+/qdrant_storage/
+/postgres_data/
+/phoenix_data/
+
+# Model weights and caches
+/models/
+.cache/
+*.safetensors
+*.onnx
+*.gguf
+
+# Evaluation run outputs (keep datasets and configs, drop generated results)
+/eval-results/
+
+# Docker
+compose.override.yaml
+docker-compose.override.yml
+
+# Logs and temp files
+*.log
+logs/
+tmp/
+*.tmp
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
