@@ -146,6 +146,7 @@ async def test_chat_and_embeddings_reach_the_router_with_the_key(
     chat, embeddings, models = server.requests
     assert chat["line"] == "POST /v1/chat/completions HTTP/1.1"
     assert chat["json"]["model"] == "small"
+    assert chat["json"]["stream"] is False
     # The connection goes to the checked address; the server still sees the name it was given.
     assert chat["headers"]["host"] == f"localhost:{server.port}"
     assert chat["headers"]["authorization"] == f"Bearer {KEY}"

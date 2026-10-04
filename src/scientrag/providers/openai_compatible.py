@@ -61,7 +61,8 @@ class OpenAICompatibleProvider:
         system: str | None = None,
         json_output: bool = False,
     ) -> str:
-        payload = self._body(messages, role, max_tokens, system)
+        # Said outright: some routers stream the reply unless told not to.
+        payload = self._body(messages, role, max_tokens, system) | {"stream": False}
         if json_output:
             payload["response_format"] = {"type": "json_object"}
         reply = await self._post("/chat/completions", payload)
