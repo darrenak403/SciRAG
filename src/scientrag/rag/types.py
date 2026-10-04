@@ -27,6 +27,8 @@ class Sources:
     """First event: the passages the answer may cite."""
 
     sources: list[Source]
+    # How they were found so far; the same dict the last event carries, not yet complete.
+    retrieval: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -38,3 +38,9 @@ def validate(text: str, valid: set[str]) -> tuple[str, list[str]]:
 def without_markers(text: str) -> str:
     """The text with every marker removed, for an answer whose passages are no longer at hand."""
     return _MARKERS.sub("", text)
+
+
+def markers(text: str) -> list[str]:
+    """Every marker written in the text, in order and with repeats. Code is left out."""
+    prose = _CODE.sub("", text)
+    return [marker for match in _MARKERS.finditer(prose) for marker in _ID.findall(match.group(2))]

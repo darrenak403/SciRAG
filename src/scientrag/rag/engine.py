@@ -66,6 +66,16 @@ def _tokens(span: Span, provider: ModelProvider, calls_before: int) -> None:
         span.set_attribute("llm.token_count.completion", sum(call.output_tokens for call in calls))
 
 
+def _token_totals(provider: ModelProvider) -> dict[str, list[int]]:
+    """Tokens in and out per role, over every call made for this question."""
+    totals: dict[str, list[int]] = {}
+    for call in provider.usage:
+        spent = totals.setdefault(call.role, [0, 0])
+        spent[0] += call.input_tokens
+        spent[1] += call.output_tokens
+    return totals
+
+
 def _documents(span: Span, ranked: Sequence[tuple[uuid.UUID, float | None]]) -> None:
     for position, (chunk_id, score) in enumerate(ranked):
         prefix = f"retrieval.documents.{position}.document"
@@ -117,8 +127,11 @@ async def answer(
     started = time.monotonic()
     details: dict[str, Any] = {"papers_in_scope": len(paper_ids)}
 
+    def elapsed_ms() -> int:
+        return round((time.monotonic() - started) * 1000)
+
     def finished(text: str, cited: list, outcome: str) -> Done:
-        details["total_ms"] = round((time.monotonic() - started) * 1000)
+        details["total_ms"] = elapsed_ms()
         root.set_attribute("output.value", text)
         root.set_attribute("answer.outcome", outcome)
         return Done(text, cited, outcome, trace_id, details)
@@ -175,11 +188,14 @@ async def answer(
                     query_vector=vector,
                     candidates=settings.search_candidates,
                     limit=settings.rerank_candidates,
+                    fusion=settings.search_fusion,
                 )
                 _documents(span, [(hit.chunk_id, hit.score) for hit in hits])
             details["candidates"] = [
                 {"chunk_id": str(hit.chunk_id), "score": hit.score} for hit in hits
             ]
+            # Since the question arrived: the rewrite, the embedding and the search.
+            details["retrieved_ms"] = elapsed_ms()
 
             titles = {paper.id: paper.title for paper in searched}
             chunks = await _load_chunks([hit.chunk_id for hit in hits], set(titles))
@@ -215,11 +231,13 @@ async def answer(
                     _tokens(span, provider, calls)
                     _documents(span, [(chunk.id, None) for chunk in chosen])
 
+            details["ranked_ms"] = elapsed_ms()
+
             context, sources = build_context(chosen, titles, max_tokens=settings.context_max_tokens)
             details["context"] = [
                 {"marker": source.marker, "chunk_id": str(source.chunk_id)} for source in sources
             ]
-            yield Sources(sources)
+            yield Sources(sources, details)
 
             pieces: list[str] = []
             with _span("generate", parent, "LLM", **{"input.value": query}) as span:
@@ -239,13 +257,14 @@ async def answer(
                 async with aclosing(stream):
                     async for piece in stream:
                         if not pieces:
-                            details["first_token_ms"] = round((time.monotonic() - started) * 1000)
+                            details["first_token_ms"] = elapsed_ms()
                             span.set_attribute("first_token_ms", details["first_token_ms"])
                         pieces.append(piece)
                         yield Delta(piece)
                 _tokens(span, provider, calls)
                 span.set_attribute("output.value", "".join(pieces))
             details["answer_model"] = provider.model("answer")
+            details["tokens"] = _token_totals(provider)
 
             by_marker = {source.marker: source for source in sources}
             # PostgreSQL stores no NUL, and no answer needs one.
