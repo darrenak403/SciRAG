@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from scientrag.auth.secrets import decrypt_secret
 from scientrag.db.models import ProviderConnection
+from scientrag.providers.errors import ProviderError
 
 # Made-up values in the shape of real credentials.
 GEMINI_KEY = "test-gemini-key-0000-abcd"
@@ -200,3 +201,78 @@ async def test_credentials_of_the_wrong_kind_change_nothing(alice: AsyncClient, 
     assert [item["label"] for item in listing] == ["My Gemini", "Work AWS"]
     row = await db.scalar(select(ProviderConnection).where(ProviderConnection.kind == "gemini"))
     assert decrypt_secret(row.secret_encrypted) == {"api_key": GEMINI_KEY}
+
+
+async def test_a_new_connection_is_tested_and_the_result_is_shown(alice: AsyncClient):
+    connection = await create(alice, GEMINI)
+
+    assert connection["capabilities"]["usable"] is True
+    assert (await alice.get("/settings/providers")).json()[0]["capabilities"]["usable"] is True
+
+
+async def test_a_connection_that_fails_its_test_is_saved_but_not_used(
+    alice: AsyncClient, connection_check: dict
+):
+    connection_check["usable"] = False
+    broken = await create(alice, GEMINI)
+
+    assert broken["capabilities"]["usable"] is False
+    assert (await alice.get("/auth/me")).json()["active_connection_id"] is None
+    choice = await alice.put("/settings/active-connection", json={"connection_id": broken["id"]})
+    assert choice.status_code == 409
+    assert choice.json()["detail"]["code"] == "connection_not_usable"
+
+    # Fixed and tested again, it can be chosen.
+    connection_check["usable"] = True
+    tested = await alice.post(f"/settings/providers/{broken['id']}/test")
+    assert tested.status_code == 200
+    assert tested.json()["capabilities"]["usable"] is True
+    choice = await alice.put("/settings/active-connection", json={"connection_id": broken["id"]})
+    assert choice.status_code == 200
+
+
+async def test_a_new_key_or_model_is_tested_again_but_a_new_label_is_not(
+    alice: AsyncClient, connection_check: dict
+):
+    connection = await create(alice, GEMINI)
+    url = f"/settings/providers/{connection['id']}"
+    connection_check["usable"] = False
+
+    assert (await alice.patch(url, json={"label": "Renamed"})).json()["capabilities"]["usable"]
+
+    changed = await alice.patch(url, json={"models": {"fast": "another-model"}})
+    assert changed.json()["capabilities"]["usable"] is False
+
+
+async def test_listing_models_reports_a_provider_failure(alice: AsyncClient, monkeypatch):
+    class Provider:
+        usage: list = []
+
+        async def list_models(self) -> list[str]:
+            if failing:
+                raise ProviderError("invalid_key")
+            return ["model-b", "model-a"]
+
+        async def aclose(self) -> None:
+            pass
+
+    monkeypatch.setattr("scientrag.providers.resolve.build_provider", lambda connection: Provider())
+    connection = await create(alice, GEMINI)
+    url = f"/settings/providers/{connection['id']}/models"
+
+    failing = False
+    assert (await alice.get(url)).json() == {"models": ["model-a", "model-b"]}
+
+    failing = True
+    response = await alice.get(url)
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "invalid_key"
+    assert GEMINI_KEY not in response.text
+
+
+async def test_another_user_cannot_test_or_list_models(alice: AsyncClient, bob: AsyncClient):
+    connection_id = (await create(alice, GEMINI))["id"]
+
+    assert (await bob.post(f"/settings/providers/{connection_id}/test")).status_code == 404
+    assert (await bob.get(f"/settings/providers/{connection_id}/models")).status_code == 404
+    assert (await bob.get("/settings/providers/usage")).json() == []

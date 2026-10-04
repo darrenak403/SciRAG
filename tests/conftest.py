@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 from apps.api.main import app  # noqa: E402
 from scientrag.auth import login_limiter  # noqa: E402
 from scientrag.db.engine import get_engine, get_sessionmaker  # noqa: E402
+from scientrag.ingestion.queue import create_tables  # noqa: E402
 
 PASSWORD = "correct horse battery"
 
@@ -55,6 +56,7 @@ def database(alembic_config: Config) -> Iterator[None]:
         connection.execute(text(f'DROP DATABASE IF EXISTS "{TEST_DATABASE}" WITH (FORCE)'))
         connection.execute(text(f'CREATE DATABASE "{TEST_DATABASE}"'))
     command.upgrade(alembic_config, "head")
+    create_tables()
     yield
     with admin.connect() as connection:
         connection.execute(text(f'DROP DATABASE IF EXISTS "{TEST_DATABASE}" WITH (FORCE)'))
@@ -69,6 +71,28 @@ async def clean_state() -> None:
     shutil.rmtree(os.environ["STORAGE_DIR"])
     os.mkdir(os.environ["STORAGE_DIR"])
     login_limiter.reset()
+
+
+USABLE = {
+    "checked_at": "2026-01-01T00:00:00+00:00",
+    "checks": [],
+    "usable": True,
+    "rerank_disabled": False,
+}
+
+
+@pytest.fixture(autouse=True)
+def connection_check(monkeypatch: pytest.MonkeyPatch) -> dict:
+    """Saving a connection tests it against the real provider. Tests have no real key,
+    so the test is replaced by a result the test can change: by default, everything works."""
+    result = dict(USABLE)
+
+    async def check_connection(db: AsyncSession, connection) -> dict:
+        connection.capabilities = dict(result)
+        return connection.capabilities
+
+    monkeypatch.setattr("apps.api.routers.providers.check_connection", check_connection)
+    return result
 
 
 @pytest.fixture

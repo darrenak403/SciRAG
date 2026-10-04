@@ -4,6 +4,7 @@ from httpx import AsyncClient, Response
 
 from apps.api.deps import get_storage
 from scientrag.config import get_settings
+from scientrag.ingestion import queue
 from tests.conftest import pdf_bytes
 
 
@@ -244,3 +245,33 @@ async def test_pagination(alice: AsyncClient):
     assert [item["title"] for item in last["items"]] == ["4"]
     assert (await alice.get("/papers", params={"page_size": 101})).status_code == 422
     assert (await alice.get("/papers", params={"sort": "password"})).status_code == 422
+
+
+async def queued_workflows(paper_id: str) -> list[tuple[str, str]]:
+    rows = await queue._client().list_workflows_async(queue_name=queue.INGEST_QUEUE)
+    return [(row.name, row.status) for row in rows if paper_id in str(row.input)]
+
+
+async def test_upload_queues_the_paper_for_the_worker(alice: AsyncClient):
+    paper_id = (await upload(alice)).json()["id"]
+
+    assert await queued_workflows(paper_id) == [("ingest_paper", "ENQUEUED")]
+
+
+async def test_a_paper_already_waiting_cannot_be_queued_twice(alice: AsyncClient):
+    paper_id = (await upload(alice)).json()["id"]
+
+    assert (await alice.post(f"/papers/{paper_id}/reingest")).status_code == 409
+    assert len(await queued_workflows(paper_id)) == 1
+
+
+async def test_delete_hides_the_paper_and_queues_its_cleanup(alice: AsyncClient):
+    paper_id = (await upload(alice)).json()["id"]
+
+    assert (await alice.delete(f"/papers/{paper_id}")).status_code == 204
+
+    assert (await alice.get(f"/papers/{paper_id}")).status_code == 404
+    assert (await alice.get(f"/papers/{paper_id}/file")).status_code == 404
+    assert ("delete_paper", "ENQUEUED") in await queued_workflows(paper_id)
+    # The file stays until the worker removes it, but the same PDF can be uploaded again.
+    assert (await upload(alice)).status_code == 202
