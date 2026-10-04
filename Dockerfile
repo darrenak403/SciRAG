@@ -16,9 +16,24 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-cache
 
-# API image: no Docling, no PyTorch. The worker target is added with ingestion.
+# API image: no Docling, no PyTorch.
 FROM base AS api
 COPY alembic.ini ./
 COPY src ./src
 COPY apps ./apps
 CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Worker image: adds the PDF parsing stack on top of the shared dependencies.
+FROM base AS worker
+# Docling's table model imports OpenCV, which needs these shared libraries
+# that the slim image leaves out.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN uv sync --frozen --no-install-project --no-cache --group ingest
+# Parser model weights are downloaded here on first use; compose backs it with a volume.
+ENV HF_HOME=/models/hf
+COPY alembic.ini ./
+COPY src ./src
+COPY apps ./apps
+CMD ["python", "-m", "apps.worker.main"]

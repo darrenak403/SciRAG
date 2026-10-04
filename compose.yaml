@@ -10,6 +10,7 @@ x-app: &app
   environment:
     DATABASE_URL: postgresql+psycopg://scientrag:${POSTGRES_PASSWORD}@postgres:5432/scientrag
     STORAGE_DIR: /data/storage
+    QDRANT_URL: http://qdrant:6333
   volumes:
     - ./src:/app/src
     - ./apps:/app/apps
@@ -33,7 +34,6 @@ services:
       timeout: 3s
       retries: 30
 
-  # Declared now so the stack is complete; first used by ingestion.
   qdrant:
     image: qdrant/qdrant:v1.19.0
     volumes:
@@ -41,7 +41,7 @@ services:
 
   migrate:
     <<: *app
-    command: alembic upgrade head
+    command: sh -c "alembic upgrade head && python -m scientrag.ingestion.queue"
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +62,34 @@ services:
       timeout: 3s
       retries: 20
 
+  # Turns uploaded PDFs into searchable chunks. Also the image the tests run in,
+  # because it is the only one with the PDF parser installed.
+  worker:
+    <<: *app
+    build:
+      context: .
+      target: worker
+    command: python -m apps.worker.main
+    volumes:
+      - ./src:/app/src
+      - ./apps:/app/apps
+      - ./tests:/app/tests
+      - ./alembic.ini:/app/alembic.ini
+      - ./pyproject.toml:/app/pyproject.toml
+      - storage:/data/storage
+      - models:/models
+    # The parser peaks around 2.5 GB on a long paper; fail loudly rather than swap.
+    mem_limit: 4g
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
+  models:
   postgres_data:
   qdrant_data:
   storage:

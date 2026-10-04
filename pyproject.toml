@@ -13,6 +13,10 @@ dependencies = [
     "alembic",
     "argon2-cffi",
     "cryptography",
+    "httpx",
+    "boto3",
+    "dbos",
+    "qdrant-client",
 ]
 
 [dependency-groups]
@@ -20,8 +24,24 @@ dev = [
     "ruff",
     "pytest",
     "pytest-asyncio",
-    "httpx",
 ]
+# PDF parsing. Installed only in the worker image: it pulls in PyTorch.
+ingest = [
+    "docling",
+    "torch",
+    "torchvision",
+]
+
+# torch and torchvision are listed above only so uv resolves them from the
+# CPU-only index: no CUDA libraries end up in the image.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.ruff]
 line-length = 100
