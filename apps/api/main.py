@@ -7,10 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from apps.api.middleware import BodySizeLimit
-from apps.api.routers import auth, health, papers, providers
+from apps.api.routers import auth, chats, chunks, health, papers, providers
 from scientrag.auth.secrets import get_fernet
 from scientrag.config import get_settings
 from scientrag.db.engine import get_engine
+from scientrag.telemetry.tracing import get_tracer_provider
 
 
 @asynccontextmanager
@@ -25,6 +26,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "See .env.example for how to generate one."
         ) from error
     yield
+    # Sends the traces still waiting in memory.
+    get_tracer_provider().shutdown()
     await get_engine().dispose()
 
 
@@ -34,6 +37,8 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(papers.router)
 app.include_router(providers.router)
+app.include_router(chats.router)
+app.include_router(chunks.router)
 
 
 @app.exception_handler(RequestValidationError)
