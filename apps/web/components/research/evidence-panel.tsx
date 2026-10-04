@@ -32,14 +32,17 @@ function EvidenceCard({ source, onOpen }: { source: Source; onOpen: () => void }
 
 /** The passage in its paper: the right page, with the passage marked. */
 function EvidencePdf({ source, onBack }: { source: Source; onBack: () => void }) {
-  // The passage, once it is known where it sits. "missing" when it can no longer be found.
-  const [passage, setPassage] = useState<Passage | "missing" | null>(null);
+  // Where a passage sits, once known. "missing" when it can no longer be found.
+  const [found, setFound] = useState<{ chunk: string; passage: Passage | "missing" } | null>(null);
+  // What was found for an earlier marker says nothing about this one.
+  const passage = found?.chunk === source.chunk_id ? found.passage : null;
 
   useEffect(() => {
     let cancelled = false;
-    api<Passage>(`/chunks/${source.chunk_id}`)
-      .then((found) => !cancelled && setPassage(found))
-      .catch(() => !cancelled && setPassage("missing"));
+    const chunk = source.chunk_id;
+    api<Passage>(`/chunks/${chunk}`)
+      .then((passage) => !cancelled && setFound({ chunk, passage }))
+      .catch(() => !cancelled && setFound({ chunk, passage: "missing" }));
     return () => {
       cancelled = true;
     };
@@ -102,8 +105,8 @@ export function EvidencePanel({
   onOpen: (source: Source) => void;
   onBack: () => void;
 }) {
-  // Keyed by passage: another one starts over instead of showing the marks of the last.
-  if (active) return <EvidencePdf key={active.chunk_id} source={active} onBack={onBack} />;
+  // Keyed by paper: another passage of the same paper moves the view, without loading the PDF again.
+  if (active) return <EvidencePdf key={active.paper_id} source={active} onBack={onBack} />;
   return (
     <div className="flex h-full min-h-0 flex-col">
       <h2 className="shrink-0 border-b px-3 py-2.5 text-sm font-medium">Evidence</h2>

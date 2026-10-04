@@ -2,7 +2,7 @@
 
 import { Loader2, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
+import { createContext, memo, useContext, useEffect, useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
 
 import { CitationMarker } from "@/components/research/citation-marker";
@@ -16,50 +16,55 @@ import { cn } from "@/lib/utils";
 
 const STARTERS = ["Summarize key findings", "Compare methodologies", "Find limitations"];
 
-function Answer({
-  message,
-  activeChunk,
-  onOpenSource,
-}: {
+type AnswerProps = {
   message: ChatMessage;
   activeChunk: string | null;
   onOpenSource: (source: Source, message: ChatMessage) => void;
-}) {
-  const components = useMemo<Components>(() => {
-    const byMarker = new Map(message.sources.map((source) => [source.marker, source]));
-    return {
-      a({ href, children }) {
-        if (href?.startsWith(CITATION_HREF)) {
-          const source = byMarker.get(href.slice(CITATION_HREF.length));
-          // A marker for a passage that was not given to the model: shown as plain text.
-          if (!source) return <>{children}</>;
-          return (
-            <CitationMarker
-              source={source}
-              active={activeChunk === source.chunk_id}
-              onOpen={(opened) => onOpenSource(opened, message)}
-            />
-          );
-        }
-        return (
-          <a href={href} target="_blank" rel="noreferrer noopener">
-            {children}
-          </a>
-        );
-      },
-    };
-  }, [message, activeChunk, onOpenSource]);
+};
 
+const AnswerContext = createContext<AnswerProps | null>(null);
+
+/** A link in an answer: a source marker, or an ordinary link that opens in a new tab. */
+function AnswerLink({ href, children }: { href?: string; children?: React.ReactNode }) {
+  const answer = useContext(AnswerContext);
+  if (answer && href?.startsWith(CITATION_HREF)) {
+    const marker = href.slice(CITATION_HREF.length);
+    const source = answer.message.sources.find((known) => known.marker === marker);
+    // A marker for a passage that was not given to the model: shown as plain text.
+    if (!source) return <>{children}</>;
+    return (
+      <CitationMarker
+        source={source}
+        active={answer.activeChunk === source.chunk_id}
+        onOpen={(opened) => answer.onOpenSource(opened, answer.message)}
+      />
+    );
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer noopener">
+      {children}
+    </a>
+  );
+}
+
+// One fixed set: a new one on every render would build every marker anew, closing its
+// card and losing its state each time a piece of the answer arrives.
+const COMPONENTS: Components = { a: AnswerLink };
+
+// Memoised: while one answer streams in, the earlier ones are not parsed again.
+const Answer = memo(function Answer(props: AnswerProps) {
   return (
     // react-markdown renders no raw HTML: what a model writes cannot become markup.
     <div className="answer text-sm leading-relaxed">
-      {/* No images: a picture address written by the model would be fetched, and could carry text out. */}
-      <Markdown components={components} disallowedElements={["img"]}>
-        {linkCitations(message.content)}
-      </Markdown>
+      <AnswerContext.Provider value={props}>
+        {/* No images: a picture address written by the model would be fetched, and could carry text out. */}
+        <Markdown components={COMPONENTS} disallowedElements={["img"]}>
+          {linkCitations(props.message.content)}
+        </Markdown>
+      </AnswerContext.Provider>
     </div>
   );
-}
+});
 
 function Failure({ message, onRetry }: { message: ChatMessage; onRetry: () => void }) {
   const provider = providerProblem(message.error?.code, message.error?.message);

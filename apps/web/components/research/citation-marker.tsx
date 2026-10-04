@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,13 +25,21 @@ export function CitationMarker({
   active: boolean;
   onOpen: (source: Source) => void;
 }) {
+  // Closed on a click: the passage opens beside the answer, and the card would cover the next markers.
+  // It stays closed until the pointer has left the marker and come back.
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState(false);
   return (
-    <HoverCard>
+    <HoverCard open={open && !chosen} onOpenChange={setOpen}>
       <HoverCardTrigger
         render={
           <button
             type="button"
-            onClick={() => onOpen(source)}
+            onClick={() => {
+              setChosen(true);
+              onOpen(source);
+            }}
+            onPointerLeave={() => setChosen(false)}
             aria-label={`Source ${source.marker.slice(1)}: ${source.paper_title}, page ${source.page}`}
             className={cn(
               "mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1 align-baseline text-xs font-medium tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-citation/50",
