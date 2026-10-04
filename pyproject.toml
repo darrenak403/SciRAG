@@ -17,6 +17,9 @@ dependencies = [
     "boto3",
     "dbos",
     "qdrant-client",
+    "opentelemetry-sdk>=1.45.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.0",
+    "anyio>=4.15.1",
 ]
 
 [dependency-groups]
