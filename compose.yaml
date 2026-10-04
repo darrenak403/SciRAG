@@ -1,0 +1,68 @@
+name: scientrag
+
+# Shared by every service that runs project code. Source is bind-mounted so
+# edits on the host reach the container without rebuilding the image.
+x-app: &app
+  build:
+    context: .
+    target: api
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://scientrag:${POSTGRES_PASSWORD}@postgres:5432/scientrag
+    STORAGE_DIR: /data/storage
+  volumes:
+    - ./src:/app/src
+    - ./apps:/app/apps
+    - ./tests:/app/tests
+    - ./alembic.ini:/app/alembic.ini
+    - ./pyproject.toml:/app/pyproject.toml
+    - storage:/data/storage
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: scientrag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: scientrag
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scientrag -d scientrag"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Declared now so the stack is complete; first used by ingestion.
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  migrate:
+    <<: *app
+    command: alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir src --reload-dir apps
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  storage:
