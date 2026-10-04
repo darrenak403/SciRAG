@@ -28,6 +28,9 @@ class PaperOut(BaseModel):
     error_code: str | None
     error: str | None
     warnings: list[Any]
+    # The paper was indexed with another embedding model than the account uses now.
+    # It is left out of search until it is indexed again.
+    needs_reindex: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -46,3 +49,51 @@ class PaperUpdate(BaseModel):
     authors: list[AuthorName] | None = Field(default=None, max_length=200)
     year: int | None = Field(default=None, ge=1000, le=2100)
     doi: Text | None = Field(default=None, max_length=255)
+
+
+class SectionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    parent_id: uuid.UUID | None
+    position: int
+    level: int
+    title: str
+    page: int
+
+
+class IngestionRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    step: str
+    attempt: int
+    status: str
+    started_at: datetime = Field(validation_alias="created_at")
+    finished_at: datetime | None
+    details: dict[str, Any]
+    error: str | None
+
+
+class ChunkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    chunk_index: int
+    kind: str
+    text: str
+    section_path: list[str]
+    page_start: int
+    page_end: int
+    bboxes: list[dict[str, Any]]
+    token_count: int
+
+
+class ChunkPage(BaseModel):
+    items: list[ChunkOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class ReindexOut(BaseModel):
+    queued: int

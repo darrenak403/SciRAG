@@ -83,9 +83,23 @@ class ConnectionOut(BaseModel):
     label: str
     config: dict[str, Any]
     secret_last4: str
+    # Result of the last capability test: each check, and whether the connection can be used.
+    capabilities: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
 
 
 class ActiveConnectionChoice(BaseModel):
     connection_id: uuid.UUID | None
+
+
+class ModelList(BaseModel):
+    models: list[str]
+
+
+class UsageRow(BaseModel):
+    connection_id: uuid.UUID | None
+    model: str
+    role: str
+    input_tokens: int
+    output_tokens: int
