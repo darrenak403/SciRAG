@@ -1,4 +1,4 @@
-from scientrag.rag.citation import validate, without_markers
+from scientrag.rag.citation import plain, validate, without_markers
 
 VALID = {"S1", "S2", "S3"}
 
@@ -67,3 +67,10 @@ def test_an_earlier_answer_loses_all_its_markers():
     assert without_markers("Sorted by weight [S1][S2]. Floats [S3, S4].") == (
         "Sorted by weight. Floats."
     )
+
+
+def test_a_marker_in_the_disguises_models_use_is_still_a_marker():
+    text, used = validate(plain("Adam corrects the bias [\u200bS2\u200b]\u3010S1\u3011."), VALID)
+
+    assert text == "Adam corrects the bias [S2][S1]."
+    assert used == ["S2", "S1"]

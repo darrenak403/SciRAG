@@ -7,6 +7,18 @@ _MARKERS = re.compile(r"([ \t]*)(\[\s*S\d+(?:\s*[,;]\s*S\d+)*\s*\])")
 _ID = re.compile(r"S\d+")
 # Fenced blocks and inline code: what is inside is quoted text, not a citation.
 _CODE = re.compile(r"```.*?(?:```|\Z)|`[^`\n]*`", re.DOTALL)
+# The ways models are seen to disguise a marker: zero-width space, word joiner and
+# byte order mark inside the brackets, and the brackets written as \u3010 \u3011.
+_AS_WRITTEN = str.maketrans(
+    {"\u200b": None, "\u2060": None, "\ufeff": None, "\u3010": "[", "\u3011": "]"}
+)
+
+
+def plain(text: str) -> str:
+    """The model's text with markers in the one form the check and the reader's
+    screen know: "[S1]". Applied piece by piece as the answer streams, so it only
+    maps single characters."""
+    return text.translate(_AS_WRITTEN)
 
 
 def validate(text: str, valid: set[str]) -> tuple[str, list[str]]:

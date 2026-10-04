@@ -256,6 +256,9 @@ async def answer(
                 # model ends there instead of running on until it is collected.
                 async with aclosing(stream):
                     async for piece in stream:
+                        piece = citation.plain(piece)
+                        if not piece:
+                            continue
                         if not pieces:
                             details["first_token_ms"] = elapsed_ms()
                             span.set_attribute("first_token_ms", details["first_token_ms"])
