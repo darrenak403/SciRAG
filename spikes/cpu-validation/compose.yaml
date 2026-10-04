@@ -1,0 +1,36 @@
+name: scientrag-spike
+
+services:
+  spike:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      DATABASE_URL: postgresql://postgres:spike@postgres:5432/spike
+    volumes:
+      - .:/app
+      - models:/models
+    depends_on:
+      qdrant:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: spike
+      POSTGRES_DB: spike
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spike"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  models:

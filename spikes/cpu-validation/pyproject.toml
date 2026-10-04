@@ -1,0 +1,26 @@
+[project]
+name = "scientrag-cpu-validation-spike"
+version = "0.0.0"
+description = "Throwaway spike: one paper through parse -> chunk -> embed -> Qdrant -> hybrid search -> rerank on CPU."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "docling",
+    "torch",
+    "torchvision",
+    "qdrant-client",
+    "dbos",
+    "sqlalchemy",
+    "psycopg[binary]",
+    "httpx",
+]
+
+# torch and torchvision are listed above only so uv resolves them from the
+# CPU-only index: no CUDA libraries end up in the image.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

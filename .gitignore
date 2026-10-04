@@ -51,6 +51,10 @@ yarn-error.log*
 # Evaluation run outputs (keep datasets and configs, drop generated results)
 /eval-results/
 
+# Spikes: downloaded sample papers and run outputs
+/spikes/**/samples/
+/spikes/**/out/
+
 # Docker
 compose.override.yaml
 docker-compose.override.yml
