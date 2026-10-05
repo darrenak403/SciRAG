@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { refreshRecentResearch } from "@/lib/research";
 import { postEvents } from "@/lib/sse";
-import type { Message, Source } from "@/lib/types";
+import type { AnswerMode, AskMode, Comparison, Message, Source } from "@/lib/types";
 
 export type ChatMessage = {
   id: string;
@@ -16,9 +16,25 @@ export type ChatMessage = {
   sources: Source[];
   state: "done" | "streaming" | "stopped" | "failed";
   error?: { code: string | null; message: string };
+  // Known for sure once the answer is finished; while it is made, from the first progress report.
+  mode?: AnswerMode;
+  table?: Comparison | null;
+  // Something the reader should know about how the answer was made, such as papers left out.
+  notice?: string | null;
+  // What is being done before the answer starts, for answers that take a while.
+  progress?: Progress;
 };
 
-type DoneEvent = { message_id: string; text: string; citations: string[] };
+export type Progress = { stage: string; done: number | null; total: number | null; mode: AnswerMode | null };
+
+type DoneEvent = {
+  message_id: string;
+  text: string;
+  citations: string[];
+  mode: AnswerMode;
+  table: Comparison | null;
+  notice: string | null;
+};
 type ErrorEvent = { code: string; message: string };
 
 let localId = 0;
@@ -50,6 +66,9 @@ export function useResearchChat(chatId: string) {
               content: message.content,
               sources: message.citations,
               state: "done",
+              mode: message.mode,
+              table: message.table,
+              notice: message.notice,
             }),
           ),
           // Without what the history already holds: an answer may have finished in the meantime.
@@ -66,7 +85,7 @@ export function useResearchChat(chatId: string) {
   }, [chatId]);
 
   const send = useCallback(
-    async (question: string) => {
+    async (question: string, mode: AskMode = "auto") => {
       if (running.current) return;
       const controller = new AbortController();
       running.current = controller;
@@ -96,11 +115,16 @@ export function useResearchChat(chatId: string) {
       try {
         for await (const { event, data } of postEvents(
           `/chats/${chatId}/messages`,
-          { content: question },
+          { content: question, mode },
           controller.signal,
         )) {
           if (event === "sources") {
             patch({ sources: data as Source[] });
+          } else if (event === "status") {
+            const progress = data as Progress;
+            patch({ progress, mode: progress.mode ?? undefined });
+          } else if (event === "table") {
+            patch({ table: data as Comparison });
           } else if (event === "delta") {
             const { text } = data as { text: string };
             patch((message) => ({ content: message.content + text }));
@@ -113,6 +137,10 @@ export function useResearchChat(chatId: string) {
               content: done.text,
               sources: message.sources.filter((source) => done.citations.includes(source.marker)),
               state: "done",
+              mode: done.mode,
+              table: done.table,
+              notice: done.notice,
+              progress: undefined,
             }));
           } else if (event === "error") {
             const failure = data as ErrorEvent;

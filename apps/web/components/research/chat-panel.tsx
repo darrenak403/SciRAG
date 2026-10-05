@@ -7,8 +7,12 @@ import Markdown, { type Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 
+import { AnswerProgress } from "@/components/research/answer-progress";
 import { CitationMarker } from "@/components/research/citation-marker";
+import { ComparisonTable } from "@/components/research/comparison-table";
+import { RetrievalDetails } from "@/components/research/retrieval-details";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useAdvancedMode } from "@/lib/advanced";
 import type { ChatMessage } from "@/lib/chat-runtime";
 import { answerMarkdown, CITATION_HREF } from "@/lib/answer-markdown";
 import { plural } from "@/lib/format";
@@ -120,11 +124,12 @@ export function ChatPanel({
 }) {
   const end = useRef<HTMLDivElement>(null);
   const last = messages.at(-1);
+  const advanced = useAdvancedMode();
 
   // Follow the answer as it is written, and jump to the newest message when one is added.
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [messages.length, last?.content, last?.state]);
+  }, [messages.length, last?.content, last?.state, last?.table, last?.progress?.stage]);
 
   if (messages.length === 0) {
     return (
@@ -153,10 +158,20 @@ export function ChatPanel({
             );
           }
           const question = messages[index - 1]?.content ?? "";
-          const waiting = message.state === "streaming" && message.content === "";
+          const waiting = message.state === "streaming" && message.content === "" && !message.table;
           return (
             <article key={message.id} className="flex flex-col gap-2">
-              {waiting ? (
+              {message.table && (
+                <ComparisonTable
+                  table={message.table}
+                  sources={message.sources}
+                  activeChunk={activeChunk}
+                  onOpen={(source) => onOpenSource(source, message)}
+                />
+              )}
+              {waiting && message.progress ? (
+                <AnswerProgress progress={message.progress} />
+              ) : waiting ? (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" aria-hidden />
                   {message.sources.length > 0 ? "Writing the answer…" : "Searching your papers…"}
@@ -164,6 +179,7 @@ export function ChatPanel({
               ) : (
                 <Answer message={message} activeChunk={activeChunk} onOpenSource={onOpenSource} />
               )}
+              {message.notice && <p className="text-xs text-muted-foreground">{message.notice}</p>}
               {message.state === "failed" && <Failure message={message} onRetry={() => onAsk(question)} />}
               {message.state === "stopped" && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -185,6 +201,7 @@ export function ChatPanel({
                   {plural(message.sources.length, "source")}
                 </button>
               )}
+              {advanced && message.state === "done" && <RetrievalDetails messageId={message.id} />}
             </article>
           );
         })}

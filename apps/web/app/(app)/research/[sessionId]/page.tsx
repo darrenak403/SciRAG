@@ -12,18 +12,28 @@ import { EvidencePanel } from "@/components/research/evidence-panel";
 import { SourcePanel } from "@/components/research/source-panel";
 import { SourceSelector } from "@/components/research/source-selector";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { api, messageOf } from "@/lib/api-client";
 import { type ChatMessage, useResearchChat } from "@/lib/chat-runtime";
+import { useCollections } from "@/lib/collections";
 import { takeFirstQuestion, useRecentResearch } from "@/lib/research";
-import type { Chat, Source } from "@/lib/types";
+import type { AskMode, Chat, Source } from "@/lib/types";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useReadyPapers } from "@/lib/use-ready-papers";
+
+const MODES: Record<AskMode, string> = {
+  auto: "Auto",
+  factual: "Ask",
+  comparison: "Compare",
+  synthesis: "Synthesize",
+};
 
 export default function ResearchPage({ params }: PageProps<"/research/[sessionId]">) {
   const { sessionId } = use(params);
   const papers = useReadyPapers();
+  const collections = useCollections() ?? [];
   const { messages, loadError, streaming, send, stop } = useResearchChat(sessionId);
   // The session is named after its first question; the list of recent sessions hears of it first.
   const recent = useRecentResearch();
@@ -33,6 +43,8 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
   const [chat, setChat] = useState<Chat | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
+  // The kind of answer the next question asks for.
+  const [mode, setMode] = useState<AskMode>("auto");
   // The answer whose sources the evidence panel lists, and the passage open in the PDF.
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [active, setActive] = useState<Source | null>(null);
@@ -50,18 +62,28 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
     if (asked.current || messages === null) return;
     asked.current = true;
     const first = takeFirstQuestion(sessionId);
-    if (first) void send(first);
+    if (first) {
+      setMode(first.mode);
+      void send(first.question, first.mode);
+    }
   }, [messages, sessionId, send]);
 
   // Changes are shown at once and saved one after another, so two quick choices
   // cannot overtake each other and the next one starts from what is on screen.
   const saving = useRef<Promise<void>>(Promise.resolve());
-  const applySources = useCallback(
-    (paperIds: string[]) => {
-      setChat((current) => current && { ...current, paper_ids: paperIds, source_count: paperIds.length });
+  const applyScope = useCallback(
+    (paperIds: string[], collectionId: string | null) => {
+      setChat(
+        (current) =>
+          current && { ...current, collection_id: collectionId, paper_ids: paperIds, source_count: paperIds.length },
+      );
+      const json = collectionId ? { collection_id: collectionId } : { paper_ids: paperIds };
       saving.current = saving.current.then(async () => {
+        const save = saving.current;
         try {
-          await api<Chat>(`/chats/${sessionId}`, { method: "PATCH", json: { paper_ids: paperIds } });
+          const saved = await api<Chat>(`/chats/${sessionId}`, { method: "PATCH", json });
+          // The last choice made: what the server now holds is what is shown.
+          if (saving.current === save) setChat(saved);
         } catch (error) {
           toast.error(messageOf(error));
           // Show what the server really holds.
@@ -74,6 +96,9 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
     },
     [sessionId],
   );
+  const applySources = useCallback((paperIds: string[]) => applyScope(paperIds, null), [applyScope]);
+  const applyCollection = (collectionId: string) =>
+    applyScope(collections.find((known) => known.id === collectionId)?.paper_ids ?? [], collectionId);
 
   const openSource = useCallback((source: Source, message: ChatMessage) => {
     setSelected(message);
@@ -89,7 +114,7 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
 
   function ask(text: string) {
     setQuestion("");
-    void send(text);
+    void send(text, mode);
   }
 
   const title = recent?.find((known) => known.id === sessionId)?.title ?? chat?.title;
@@ -115,7 +140,16 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
     messages?.findLast((message) => message.role === "assistant" && message.sources.length > 0) ??
     null;
 
-  const sources = <SourcePanel papers={papers ?? []} selected={inUse} onChange={applySources} />;
+  const sources = (
+    <SourcePanel
+      papers={papers ?? []}
+      selected={inUse}
+      onChange={applySources}
+      collections={collections}
+      collectionId={chat?.collection_id ?? null}
+      onCollection={applyCollection}
+    />
+  );
   const evidence = (
     <EvidencePanel
       sources={shownAnswer?.sources ?? []}
@@ -151,7 +185,26 @@ export default function ResearchPage({ params }: PageProps<"/research/[sessionId
           placeholder="Ask about the selected papers…"
           autoFocus
         >
-          <SourceSelector papers={papers ?? []} selected={inUse} onApply={applySources} />
+          <SourceSelector
+            papers={papers ?? []}
+            selected={inUse}
+            onApply={applySources}
+            collections={collections}
+            collectionId={chat?.collection_id ?? null}
+            onApplyCollection={applyCollection}
+          />
+          <NativeSelect
+            aria-label="Kind of answer"
+            title="Kind of answer"
+            value={mode}
+            onChange={(event) => setMode(event.target.value as AskMode)}
+          >
+            {Object.entries(MODES).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </NativeSelect>
         </Composer>
         {chat && inUse.length === 0 && (
           <p className="pt-1.5 text-center text-xs text-muted-foreground">Choose at least one source to ask.</p>
