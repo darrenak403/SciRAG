@@ -1,4 +1,4 @@
-# ScientRAG
+# SciRAG
 
 Hỏi đáp trên bài báo khoa học, có trích dẫn nguồn.
 
