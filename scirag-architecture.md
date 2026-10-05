@@ -1,4 +1,4 @@
-# ScientRAG — Tài liệu kiến trúc
+# SciRAG — Tài liệu kiến trúc
 
 Cập nhật: 05/10/2026. Tài liệu mô tả hệ thống **đúng như code hiện có**; phần nào mới là dự định thì ghi rõ "chưa làm". Các số phiên bản đã được đối chiếu với nguồn chính thức ngày 04/10/2026 (xem [Nguồn](#16-nguồn)).
 
