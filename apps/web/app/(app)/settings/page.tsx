@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useTheme } from "next-themes";
 
 import { PageHeader } from "@/components/app-shell/page-header";
 import { useSession } from "@/components/app-shell/session";
 import { ModelProviders } from "@/components/settings/model-providers";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/lib/api-client";
@@ -38,6 +39,18 @@ export default function SettingsPage() {
                 <option value="dark">Dark</option>
               </NativeSelect>
             </label>
+          </section>
+
+          <Separator />
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-base font-medium">Advanced</h2>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Technical details for evaluating and debugging answers.</span>
+              <Link href="/settings/advanced" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Open
+              </Link>
+            </div>
           </section>
 
           <Separator />

@@ -7,14 +7,19 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useAddPaper } from "@/components/add-paper/add-paper-provider";
 import { useAskPapers } from "@/components/add-paper/ready-actions";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { AddToCollectionDialog } from "@/components/collections/collection-dialogs";
 import { MetadataDialog } from "@/components/library/metadata-form";
 import { PaperFailure } from "@/components/library/paper-failure";
 import { PaperStatusBadge } from "@/components/library/paper-status-badge";
+import { ProcessingDetails } from "@/components/library/processing-details";
+import { ChunkList } from "@/components/reader/chunk-list";
 import { PaperMetadata } from "@/components/reader/paper-metadata";
 import { type PdfTarget, PdfViewer } from "@/components/reader/pdf-viewer-lazy";
 import { SectionTree } from "@/components/reader/section-tree";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAdvancedMode } from "@/lib/advanced";
 import { api, messageOf } from "@/lib/api-client";
 import { isInProgress } from "@/lib/paper-status";
 import { track, useProcessing } from "@/lib/processing-store";
@@ -31,6 +36,8 @@ export default function PaperReaderPage({ params }: PageProps<"/library/[paperId
   const [target, setTarget] = useState<PdfTarget | null>(null);
   const [editing, setEditing] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [collecting, setCollecting] = useState(false);
+  const advanced = useAdvancedMode();
 
   // The store's copy says when a paper being prepared moves on or finishes.
   const live = useProcessing().find((known) => known.id === paperId);
@@ -73,7 +80,7 @@ export default function PaperReaderPage({ params }: PageProps<"/library/[paperId
   }
 
   const shown = { ...paper, ...live };
-  const information = (
+  const details = (
     <div className="flex flex-col gap-6 p-4">
       <PaperMetadata paper={shown} />
 
@@ -93,6 +100,9 @@ export default function PaperReaderPage({ params }: PageProps<"/library/[paperId
         </Button>
         <Button variant="outline" onClick={() => setEditing(true)}>
           <Pencil /> Edit information
+        </Button>
+        <Button variant="outline" onClick={() => setCollecting(true)}>
+          Add to collection
         </Button>
       </div>
       {shown.needs_reindex && (
@@ -125,6 +135,31 @@ export default function PaperReaderPage({ params }: PageProps<"/library/[paperId
         </section>
       )}
     </div>
+  );
+  // The technical view adds how the paper was processed and what it was split into.
+  const information = !advanced ? (
+    details
+  ) : (
+    <Tabs defaultValue="details" className="gap-0">
+      <TabsList className="mx-4 mt-4">
+        <TabsTrigger value="details">Details</TabsTrigger>
+        <TabsTrigger value="processing">Processing</TabsTrigger>
+        <TabsTrigger value="chunks">Chunks</TabsTrigger>
+      </TabsList>
+      <TabsContent value="details">{details}</TabsContent>
+      <TabsContent value="processing" className="p-4">
+        <ProcessingDetails paperId={paper.id} status={`${shown.status}:${shown.processing_step}`} />
+      </TabsContent>
+      <TabsContent value="chunks" className="p-4">
+        <ChunkList
+          paperId={paper.id}
+          onOpen={(chunk) => {
+            setTarget({ page: chunk.page_start, boxes: chunk.bboxes, key: `${chunk.id}:${Date.now()}` });
+            setInfoOpen(false);
+          }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 
   return (
@@ -162,6 +197,7 @@ export default function PaperReaderPage({ params }: PageProps<"/library/[paperId
         </SheetContent>
       </Sheet>
 
+      <AddToCollectionDialog paperIds={collecting ? [paper.id] : null} onClose={() => setCollecting(false)} />
       <MetadataDialog
         paper={editing ? shown : null}
         onClose={() => setEditing(false)}
