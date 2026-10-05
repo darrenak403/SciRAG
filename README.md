@@ -2,7 +2,15 @@
 
 Hỏi đáp trên bài báo khoa học, có trích dẫn nguồn.
 
-Hiện có: đăng ký / đăng nhập, upload và quản lý thư viện PDF, kết nối tới nhà cung cấp model theo từng tài khoản (mỗi người nhập key của mình), worker xử lý PDF (parse, chia chunk, embedding, index vào Qdrant), và hỏi đáp trên các bài báo đã xử lý, có trích dẫn tới đúng đoạn văn. Chưa có giao diện web.
+Hiện có:
+
+- Đăng ký / đăng nhập; mỗi tài khoản tự thêm kết nối tới nhà cung cấp model của mình (Gemini, Amazon Bedrock, hoặc endpoint tương thích OpenAI). Server không giữ key model nào.
+- Upload và quản lý thư viện PDF; worker xử lý từng paper ở nền (parse, chia chunk, tóm tắt, embedding, index vào Qdrant).
+- Hỏi đáp trên các paper đã xử lý, mỗi nhận định dẫn về đúng đoạn, đúng trang, tô sáng trong PDF.
+- Collection gom paper để hỏi chung; so sánh nhiều paper thành bảng; tổng hợp trên cả collection.
+- Giao diện web cho tất cả những việc trên, và bộ đo chất lượng chạy bằng một lệnh.
+
+Chưa có: chia sẻ collection giữa các tài khoản, cấu hình triển khai production. Kiến trúc chi tiết: [scient-rag-architecture.md](scient-rag-architecture.md).
 
 ## Yêu cầu
 
@@ -35,6 +43,18 @@ Lần đầu worker xử lý một PDF, nó tải model của parser (khoảng 5
 > `docker compose down -v` xoá toàn bộ dữ liệu: tài khoản, bài báo và file đã upload.
 
 > Đổi `SECRETS_KEY` sau khi đã có người dùng thì mọi key model đã lưu không còn đọc được; người dùng phải nhập lại.
+
+## Giao diện web
+
+| Trang | Việc làm |
+|-------|----------|
+| `/` | Đặt câu hỏi, chọn nguồn (paper hoặc collection), mở lại phiên gần đây. |
+| `/library` | Thư viện: thêm paper, lọc, sắp xếp, sửa metadata, xoá, chạy lại paper lỗi. Bấm một paper để đọc PDF kèm mục lục và tóm tắt. |
+| `/research/{id}` | Phiên hỏi đáp. Bấm marker `[S1]` hoặc một ô của bảng so sánh để mở PDF đúng trang, đoạn nguồn được tô sáng. |
+| `/collections` | Tạo collection, thêm bớt paper; từ trang một collection chọn Ask, Compare hoặc Synthesize. |
+| `/settings` | Kết nối model, model cho từng vai trò, lượng token đã dùng. **Advanced** bật các chi tiết kỹ thuật: từng bước xử lý của paper, danh sách chunk, cách tìm nguồn của mỗi câu trả lời, cấu hình tìm kiếm của server. |
+
+Ảnh các màn hình chính: `docs/screenshots/web-ui/`.
 
 ## Xử lý PDF
 
@@ -72,7 +92,7 @@ Câu hỏi có ba cách trả lời, chọn bằng `mode` trong body (mặc đ�
 |--------|--------------|
 | `factual` | Tìm các đoạn hợp nhất trong cả phạm vi rồi trả lời. Phạm vi một paper luôn đi đường này. |
 | `comparison` | Lấy vài đoạn từ từng paper, trả về một bảng (mỗi paper một hàng, ô nào cũng kèm nguồn) và một đoạn nhận xét. |
-| `synthesis` | Lấy vài đoạn từ từng paper, model nhanh chấm và tóm tắt từng đoạn, rồi viết bài gồm bốn phần: điểm chung, điểm khác, khoảng trống, kết luận. |
+| `synthesis` | Lấy vài đoạn từ từng paper, model nhanh chấm và tóm tắt từng đoạn, rồi viết bài gồm bốn phần: Overview, Areas of agreement, Disagreements, Research gaps. Phần nào thiếu bằng chứng thì ghi rõ là thiếu. |
 
 Hai cách sau xem tối đa `MULTI_PAPER_MAX_PAPERS` paper; phạm vi lớn hơn thì chọn các paper sát câu hỏi nhất và câu trả lời ghi rõ đã xem bao nhiêu paper.
 
@@ -188,6 +208,7 @@ src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  evaluation (bộ đo)
 tests/           unit và integration
 eval/            bộ câu hỏi golden và cấu hình thí nghiệm
+scient-rag-architecture.md  kiến trúc của hệ thống
 docs/decisions/  quyết định kỹ thuật đã chốt
 docs/screenshots/ ảnh chụp các màn hình chính
 ```
