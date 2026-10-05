@@ -74,3 +74,37 @@ def test_a_marker_in_the_disguises_models_use_is_still_a_marker():
 
     assert text == "Adam corrects the bias [S2][S1]."
     assert used == ["S2", "S1"]
+
+
+def test_round_brackets_around_a_given_passage_are_a_marker():
+    text, used = validate("Adam adapts the step size (S2). ResNet adds shortcuts (S1, S3).", VALID)
+
+    assert text == "Adam adapts the step size [S2]. ResNet adds shortcuts [S1][S3]."
+    assert used == ["S2", "S1", "S3"]
+
+
+def test_round_brackets_around_anything_else_are_left_as_written():
+    text, used = validate("See the supplement (S9) and the note (see S1).", VALID)
+
+    assert text == "See the supplement (S9) and the note (see S1)."
+    assert used == []
+
+
+def test_round_brackets_in_a_text_that_cites_in_square_ones_are_the_paper_s_own():
+    written = "The molecule relaxes to the singlet state (S1) [S2]. Subjects (S1, S3) agreed."
+
+    text, used = validate(written, VALID)
+
+    assert text == written
+    assert used == ["S2"]
+    assert (
+        without_markers(written)
+        == "The molecule relaxes to the singlet state (S1). Subjects (S1, S3) agreed."
+    )
+
+
+def test_round_brackets_straight_after_a_symbol_are_a_formula():
+    text, used = validate("The prior P(S1) and the entropy H(S1, S2) are fixed (S3).", VALID)
+
+    assert text == "The prior P(S1) and the entropy H(S1, S2) are fixed [S3]."
+    assert used == ["S3"]
