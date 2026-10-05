@@ -19,6 +19,7 @@ from scientrag.index import qdrant_index
 from scientrag.providers.base import Usage
 from scientrag.providers.defaults import models_for
 from scientrag.providers.errors import ProviderError
+from scientrag.rag import prompts
 
 # Model names no other run uses, so the collections made here can be dropped afterwards.
 EMBEDDING_MODEL = f"test-chat-embedding-{uuid.uuid4().hex[:8]}"
@@ -119,15 +120,31 @@ class ScriptedProvider:
     answer = "Widgets are sorted by weight [S1]."
     rewritten: str | None = None
     ranking: str = '{"ranking": []}'
+    # What the fast model says the question is. None: a factual one, as written.
+    analysis: str | None = None
+    # The fast model's judgement of a passage, by a word the passage holds. Others score 8.
+    evidence: dict[str, str] = {}
+    # The answer model's replies when asked for a comparison table, in order.
+    tables: list[str] = []
     fail_at: str | None = None
     calls: list[dict] = []
     streams_closed = 0
+    STEPS = {
+        prompts.REWRITE_SYSTEM: "rewrite",
+        prompts.RERANK_SYSTEM: "rerank",
+        prompts.ANALYZE_SYSTEM: "analyze",
+        prompts.EVIDENCE_SYSTEM: "judge",
+        prompts.COMPARE_SYSTEM: "table",
+    }
 
     @classmethod
     def reset(cls) -> None:
         cls.answer = "Widgets are sorted by weight [S1]."
         cls.rewritten = None
         cls.ranking = '{"ranking": []}'
+        cls.analysis = None
+        cls.evidence = {}
+        cls.tables = []
         cls.fail_at = None
         cls.calls = []
         cls.streams_closed = 0
@@ -146,12 +163,24 @@ class ScriptedProvider:
             raise ProviderError("quota_exceeded")
 
     async def complete(self, messages, *, role, max_tokens, system=None, json_output=False) -> str:
-        step = "rerank" if json_output else "rewrite"
-        self._called(step, messages=messages)
+        step = self.STEPS[system]
+        self._called(step, messages=messages, role=role)
         self.usage.append(Usage(role, self.models[role], 50, 5))
-        if json_output:
+        content = messages[-1]["content"]
+        asked = content.rsplit("Last question: ", 1)[-1]
+        if step == "rerank":
             return self.ranking
-        return self.rewritten or messages[-1]["content"].rsplit("Last question: ", 1)[-1]
+        if step == "analyze":
+            return self.analysis or json.dumps({"type": "factual", "question": asked})
+        if step == "judge":
+            passage = content.split("<passage>\n", 1)[1].rsplit("\n</passage>", 1)[0]
+            for word, reply in self.evidence.items():
+                if word in passage:
+                    return reply
+            return json.dumps({"relevance": 8, "summary": f"Summary: {passage}"})
+        if step == "table":
+            return type(self).tables.pop(0) if self.tables else "not a table"
+        return self.rewritten or asked
 
     async def stream(self, messages, *, role, max_tokens, system=None):
         self._called("generate", messages=messages, system=system)

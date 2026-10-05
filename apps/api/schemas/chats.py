@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from apps.api.schemas.text import NoNul
 
@@ -15,23 +15,37 @@ Question = Annotated[
 PaperIds = Annotated[list[uuid.UUID], Field(max_length=200)]
 
 
-class ChatCreate(BaseModel):
+class _OneScope(BaseModel):
+    @model_validator(mode="after")
+    def one_scope(self) -> Self:
+        if self.paper_ids and self.collection_id is not None:
+            raise ValueError("give paper_ids or collection_id, not both")
+        return self
+
+
+class ChatCreate(_OneScope):
     title: ChatTitle | None = None
     # The papers the chat searches. May be empty and filled in later.
     paper_ids: PaperIds = []
+    # Instead of paper_ids: the chat searches whatever this collection holds.
+    collection_id: uuid.UUID | None = None
 
 
-class ChatUpdate(BaseModel):
-    """Fields left out are not changed. paper_ids, when given, replaces the whole scope."""
+class ChatUpdate(_OneScope):
+    """Fields left out are not changed. paper_ids or collection_id, when given,
+    replaces the whole scope."""
 
     title: ChatTitle | None = None
     paper_ids: PaperIds | None = None
+    collection_id: uuid.UUID | None = None
 
 
 class ChatOut(BaseModel):
     id: uuid.UUID
     title: str | None
     paper_ids: list[uuid.UUID]
+    # Set when the chat searches a collection; paper_ids is then what the collection holds now.
+    collection_id: uuid.UUID | None
     # How many papers the chat searches, for the list of recent chats.
     source_count: int
     created_at: datetime
@@ -40,6 +54,8 @@ class ChatOut(BaseModel):
 
 class QuestionIn(BaseModel):
     content: Question
+    # auto: the kind of question is worked out from the question. The others say it outright.
+    mode: Literal["auto", "factual", "comparison", "synthesis"] = "auto"
 
 
 class SourceOut(BaseModel):
@@ -60,6 +76,11 @@ class MessageOut(BaseModel):
     content: str
     # The passages an assistant message cites. Empty for user messages.
     citations: list[SourceOut]
+    # How an assistant message was produced: factual, comparison or synthesis.
+    mode: str
+    # A comparison's table; its cells cite passages by the markers in citations.
+    table: dict[str, Any] | None
+    notice: str | None
     created_at: datetime
 
 

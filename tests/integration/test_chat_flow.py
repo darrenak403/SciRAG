@@ -167,6 +167,7 @@ async def test_how_the_passages_were_found_is_kept_with_the_answer(
     finished = spans.get_finished_spans()
     assert {span.name for span in finished} == {
         "answer_question",
+        "embed_query",
         "retrieve",
         "rerank",
         "generate",

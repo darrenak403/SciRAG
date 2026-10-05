@@ -1,69 +1,45 @@
 """Answers a question from the papers in scope, with the asking account's own models.
 
-One path: make the question stand alone, search the papers the account may
-read, rerank, give the best passages to the model, check the markers it wrote.
+The question is made to stand alone and its kind decided; then one of three
+paths answers it: factual (the best passages of all the papers), comparison
+(a table with a row per paper) or synthesis (findings gathered across papers).
 Each step is a span of one trace.
 """
 
 import asyncio
+import dataclasses
 import time
 import uuid
-from collections.abc import AsyncIterator, Iterator, Sequence
-from contextlib import aclosing, contextmanager
-from typing import Any
+from collections.abc import AsyncIterator, Sequence
+from contextlib import aclosing
+from typing import Any, Literal
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.trace import Span, Status, StatusCode
-from sqlalchemy import select
+from opentelemetry.trace import Status, StatusCode
 
 from scientrag.access.readable_papers import readable_papers
-from scientrag.config import get_settings
+from scientrag.config import Settings, get_settings
 from scientrag.db.engine import get_sessionmaker
-from scientrag.db.models import Chunk, Paper, ProviderConnection
-from scientrag.index import search as index_search
+from scientrag.db.models import Paper, ProviderConnection
 from scientrag.index.qdrant_index import chunks_collection
 from scientrag.providers.base import Message, ModelProvider
 from scientrag.providers.errors import ProviderError
 from scientrag.providers.resolve import connection_provider
-from scientrag.rag import analyzer, citation, reranker
-from scientrag.rag.context_builder import build_context
-from scientrag.rag.prompts import ANSWER_SYSTEM
-from scientrag.rag.types import Delta, Done, Event, Sources
+from scientrag.rag import analyzer
+from scientrag.rag.paths import comparison, factual, synthesis
+from scientrag.rag.paths.base import NO_EVIDENCE, Ask, Written, error_code, span, tokens
+from scientrag.rag.types import Done, Event, Mode, Sources
+from scientrag.rag.types import Status as Progress
 from scientrag.telemetry.tracing import SPAN_KIND, get_tracer
 
+__all__ = ["NO_EVIDENCE", "NO_PAPERS", "answer"]
+
 NO_PAPERS = "There are no processed papers in the scope of this chat."
-NO_EVIDENCE = "I could not find anything about this in the selected papers."
+PATHS = {"factual": factual.run, "comparison": comparison.run, "synthesis": synthesis.run}
 
-
-def _error_code(error: Exception) -> str:
-    return error.code if isinstance(error, ProviderError) else type(error).__name__
-
-
-@contextmanager
-def _span(name: str, parent: Context, kind: str, **attributes: Any) -> Iterator[Span]:
-    """A child span that is never made the current one.
-
-    The answer is an async generator; a span left current across its yields
-    would be closed from another context than it was opened in.
-    """
-    span = get_tracer().start_span(name, context=parent, attributes={SPAN_KIND: kind, **attributes})
-    try:
-        yield span
-    except Exception as error:
-        span.set_status(Status(StatusCode.ERROR, _error_code(error)))
-        raise
-    finally:
-        span.end()
-
-
-def _tokens(span: Span, provider: ModelProvider, calls_before: int) -> None:
-    """Records on the span the model and tokens of the calls made since calls_before."""
-    calls = provider.usage[calls_before:]
-    if calls:
-        span.set_attribute("llm.model_name", calls[-1].model)
-        span.set_attribute("llm.token_count.prompt", sum(call.input_tokens for call in calls))
-        span.set_attribute("llm.token_count.completion", sum(call.output_tokens for call in calls))
+# auto: the kind of question is worked out from the question itself.
+AskedMode = Literal["auto", "factual", "comparison", "synthesis"]
 
 
 def _token_totals(provider: ModelProvider) -> dict[str, list[int]]:
@@ -76,27 +52,61 @@ def _token_totals(provider: ModelProvider) -> dict[str, list[int]]:
     return totals
 
 
-def _documents(span: Span, ranked: Sequence[tuple[uuid.UUID, float | None]]) -> None:
-    for position, (chunk_id, score) in enumerate(ranked):
-        prefix = f"retrieval.documents.{position}.document"
-        span.set_attribute(f"{prefix}.id", str(chunk_id))
-        if score is not None:
-            span.set_attribute(f"{prefix}.score", score)
-
-
 async def _searchable(user_id: uuid.UUID, paper_ids: Sequence[uuid.UUID]) -> list[Paper]:
     async with get_sessionmaker()() as db:
         return await readable_papers(db, user_id, paper_ids, ready_only=True)
 
 
-async def _load_chunks(chunk_ids: Sequence[uuid.UUID], paper_ids: set[uuid.UUID]) -> list[Chunk]:
-    """The chunks in the order given. One that is gone, or not of these papers, is dropped."""
-    async with get_sessionmaker()() as db:
-        rows = await db.scalars(
-            select(Chunk).where(Chunk.id.in_(chunk_ids), Chunk.paper_id.in_(paper_ids))
-        )
-        by_id = {row.id: row for row in rows}
-    return [by_id[chunk_id] for chunk_id in chunk_ids if chunk_id in by_id]
+async def _understand(
+    provider: ModelProvider,
+    settings: Settings,
+    parent: Context,
+    question: str,
+    history: list[Message],
+    asked: AskedMode,
+    papers: int,
+) -> tuple[Mode, str, list[float]]:
+    """The kind of question, the question as it is searched for, and its vector."""
+    # One paper cannot be compared or synthesized: whatever was asked for is a plain question.
+    classify = asked == "auto" and papers > 1
+
+    async def prepared() -> tuple[Mode, str]:
+        if not classify and not history:
+            # A first question already stands alone.
+            return ("factual" if asked == "auto" else asked), question
+        name = "analyze_question" if classify else "rewrite_question"
+        with span(name, parent, "LLM", **{"input.value": question}) as opened:
+            calls = len(provider.usage)
+            mode: Mode = "factual" if asked == "auto" else asked
+            query = question
+            try:
+                async with asyncio.timeout(settings.fast_model_timeout_seconds):
+                    if classify:
+                        mode, query = await analyzer.analyze(provider, history, question)
+                    else:
+                        query = await analyzer.rewrite(provider, history, question)
+            except (ProviderError, TimeoutError) as error:
+                # The question as written is still worth searching for, as a plain question.
+                code = error.code if isinstance(error, ProviderError) else "timeout"
+                opened.set_attribute("warning", f"{name} failed: {code}")
+            tokens(opened, provider, calls, role="fast")
+            opened.set_attribute("output.value", query)
+            return mode, query
+
+    async def embedded(text: str) -> list[float]:
+        with span("embed_query", parent, "EMBEDDING", **{"input.value": text}) as opened:
+            calls = len(provider.usage)
+            vector = await provider.embed_query(text)
+            tokens(opened, provider, calls, role="embedding")
+            return vector
+
+    if history:
+        # The search is for the rewritten question, so the rewrite comes first.
+        mode, query = await prepared()
+        return mode, query, await embedded(query)
+    # Nothing to rewrite: the question is embedded while its kind is worked out.
+    (mode, _), vector = await asyncio.gather(prepared(), embedded(question))
+    return mode, question, vector
 
 
 async def answer(
@@ -105,8 +115,10 @@ async def answer(
     *,
     paper_ids: Sequence[uuid.UUID],
     history: list[Message],
+    mode: AskedMode = "auto",
 ) -> AsyncIterator[Event]:
-    """Yields the sources, then the answer piece by piece, then the checked result.
+    """Yields what is being done and the sources, then the answer piece by piece
+    (after its table, for a comparison), then the checked result.
 
     connection is the asking account's own; paper_ids is the scope it asked in.
     Raises ProviderError when the account's provider fails.
@@ -130,156 +142,94 @@ async def answer(
     def elapsed_ms() -> int:
         return round((time.monotonic() - started) * 1000)
 
-    def finished(text: str, cited: list, outcome: str) -> Done:
+    def finished(written: Written, kind: Mode = "factual") -> Done:
         details["total_ms"] = elapsed_ms()
-        root.set_attribute("output.value", text)
-        root.set_attribute("answer.outcome", outcome)
-        return Done(text, cited, outcome, trace_id, details)
+        root.set_attribute("output.value", written.text)
+        root.set_attribute("answer.outcome", written.outcome)
+        root.set_attribute("answer.mode", kind)
+        return Done(
+            written.text,
+            written.citations,
+            written.outcome,
+            trace_id,
+            details,
+            kind,
+            written.table,
+            written.notice,
+        )
 
     try:
         papers = await _searchable(user_id, paper_ids)
         if not papers:
             yield Sources([])
-            yield finished(NO_PAPERS, [], "no_papers")
+            yield finished(Written(NO_PAPERS, [], "no_papers"))
             return
 
         async with connection_provider(connection) as provider:
             embedding_model = provider.model("embedding")
             details["embedding_model"] = embedding_model
 
-            query = question
-            if history:
-                with _span("rewrite_question", parent, "LLM", **{"input.value": question}) as span:
-                    calls = len(provider.usage)
-                    try:
-                        async with asyncio.timeout(settings.fast_model_timeout_seconds):
-                            query = await analyzer.rewrite(provider, history, question)
-                    except (ProviderError, TimeoutError) as error:
-                        # The question as written is still worth searching for.
-                        code = error.code if isinstance(error, ProviderError) else "timeout"
-                        span.set_attribute("warning", f"rewrite failed: {code}")
-                    _tokens(span, provider, calls)
-                    span.set_attribute("output.value", query)
+            kind, query, vector = await _understand(
+                provider, settings, parent, question, history, mode, len(papers)
+            )
+            details["mode"] = kind
             details["search_query"] = query
 
-            with _span("retrieve", parent, "RETRIEVER", **{"input.value": query}) as span:
-                calls = len(provider.usage)
-                vector = await provider.embed_query(query)
-                _tokens(span, provider, calls)
-                collection = chunks_collection(embedding_model, len(vector))
-                # Vectors of another model cannot be compared with this query.
-                searched = [paper for paper in papers if paper.index_collection == collection]
-                details["papers_searched"] = len(searched)
-                details["papers_skipped"] = [
-                    str(paper.id) for paper in papers if paper.index_collection != collection
-                ]
-                if not searched:
-                    others = sorted({paper.embedding_model or "unknown" for paper in papers})
-                    raise ProviderError(
-                        "capability_missing",
-                        f"the papers in scope were indexed with {', '.join(others)}; "
-                        f"index them again to search them with {embedding_model}",
-                    )
-                hits = await index_search.search(
-                    collection,
-                    owner_id=user_id,
-                    paper_ids=[paper.id for paper in searched],
-                    query_text=query,
-                    query_vector=vector,
-                    candidates=settings.search_candidates,
-                    limit=settings.rerank_candidates,
-                    fusion=settings.search_fusion,
-                )
-                _documents(span, [(hit.chunk_id, hit.score) for hit in hits])
-            details["candidates"] = [
-                {"chunk_id": str(hit.chunk_id), "score": hit.score} for hit in hits
+            collection = chunks_collection(embedding_model, len(vector))
+            # Vectors of another model cannot be compared with this query.
+            searched = [paper for paper in papers if paper.index_collection == collection]
+            details["papers_searched"] = len(searched)
+            details["papers_skipped"] = [
+                str(paper.id) for paper in papers if paper.index_collection != collection
             ]
-            # Since the question arrived: the rewrite, the embedding and the search.
-            details["retrieved_ms"] = elapsed_ms()
+            if not searched:
+                others = sorted({paper.embedding_model or "unknown" for paper in papers})
+                raise ProviderError(
+                    "capability_missing",
+                    f"the papers in scope were indexed with {', '.join(others)}; "
+                    f"index them again to search them with {embedding_model}",
+                )
+            if len(searched) == 1:
+                kind = details["mode"] = "factual"
 
-            titles = {paper.id: paper.title for paper in searched}
-            chunks = await _load_chunks([hit.chunk_id for hit in hits], set(titles))
-            if not chunks:
-                yield Sources([])
-                yield finished(NO_EVIDENCE, [], "no_evidence")
-                return
-
-            chosen = chunks[: settings.context_chunks]
-            capabilities = connection.capabilities or {}
-            if not settings.rerank_enabled:
-                details["rerank"] = "off"
-            elif capabilities.get("rerank_disabled"):
-                details["rerank"] = "skipped: the fast model does not return JSON"
-            elif len(chunks) > 1:
-                with _span("rerank", parent, "RERANKER", **{"input.value": query}) as span:
-                    calls = len(provider.usage)
-                    try:
-                        async with asyncio.timeout(settings.fast_model_timeout_seconds):
-                            order = await reranker.rerank(
-                                provider,
-                                query,
-                                [chunk.embed_text for chunk in chunks],
-                                settings.context_chunks,
+            ask = Ask(
+                provider=provider,
+                settings=settings,
+                user_id=user_id,
+                question=question,
+                query=query,
+                vector=vector,
+                collection=collection,
+                papers=searched,
+                history=history,
+                json_unreliable=bool((connection.capabilities or {}).get("rerank_disabled")),
+                parent=parent,
+                details=details,
+                elapsed_ms=elapsed_ms,
+            )
+            path = PATHS[kind](ask)
+            # Closed with this generator, so a reader who leaves ends the path's calls too.
+            async with aclosing(path):
+                async for item in path:
+                    if isinstance(item, Written):
+                        if details["papers_skipped"]:
+                            left_out = (
+                                f"{len(details['papers_skipped'])} of the papers in scope were "
+                                "left out: they were indexed with another embedding model."
                             )
-                        chosen = [chunks[index] for index in order]
-                        details["rerank"] = "model"
-                    except (ProviderError, TimeoutError, ValueError) as error:
-                        # The search order is a usable ranking; the answer does not wait on this.
-                        reason = _error_code(error)
-                        details["rerank"] = f"failed: {reason}"
-                        span.set_attribute("warning", f"rerank failed: {reason}")
-                    _tokens(span, provider, calls)
-                    _documents(span, [(chunk.id, None) for chunk in chosen])
-
-            details["ranked_ms"] = elapsed_ms()
-
-            context, sources = build_context(chosen, titles, max_tokens=settings.context_max_tokens)
-            details["context"] = [
-                {"marker": source.marker, "chunk_id": str(source.chunk_id)} for source in sources
-            ]
-            yield Sources(sources, details)
-
-            pieces: list[str] = []
-            with _span("generate", parent, "LLM", **{"input.value": query}) as span:
-                calls = len(provider.usage)
-                messages = [
-                    *analyzer.clipped(history),
-                    {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
-                ]
-                stream = provider.stream(
-                    messages,
-                    role="answer",
-                    max_tokens=settings.answer_max_tokens,
-                    system=ANSWER_SYSTEM,
-                )
-                # Closed with this generator: when the reader leaves, the call to the
-                # model ends there instead of running on until it is collected.
-                async with aclosing(stream):
-                    async for piece in stream:
-                        piece = citation.plain(piece)
-                        if not piece:
-                            continue
-                        if not pieces:
-                            details["first_token_ms"] = elapsed_ms()
-                            span.set_attribute("first_token_ms", details["first_token_ms"])
-                        pieces.append(piece)
-                        yield Delta(piece)
-                _tokens(span, provider, calls)
-                span.set_attribute("output.value", "".join(pieces))
-            details["answer_model"] = provider.model("answer")
-            details["tokens"] = _token_totals(provider)
-
-            by_marker = {source.marker: source for source in sources}
-            # PostgreSQL stores no NUL, and no answer needs one.
-            answer_text = "".join(pieces).replace("\x00", "")
-            text, used = citation.validate(answer_text, set(by_marker))
-            if not text:
-                raise ProviderError("provider_rejected", "the model returned no answer")
-            # An answer that cites nothing is the model saying the passages do not hold it.
-            outcome = "answered" if used else "no_evidence"
-            yield finished(text, [by_marker[marker] for marker in used], outcome)
+                            item = dataclasses.replace(
+                                item, notice=" ".join(filter(None, [item.notice, left_out]))
+                            )
+                        details["answer_model"] = provider.model("answer")
+                        details["tokens"] = _token_totals(provider)
+                        yield finished(item, kind)
+                    elif isinstance(item, Progress):
+                        # The stages ahead depend on the kind of answer being made.
+                        yield dataclasses.replace(item, mode=kind)
+                    else:
+                        yield item
     except Exception as error:
-        root.set_status(Status(StatusCode.ERROR, _error_code(error)))
+        root.set_status(Status(StatusCode.ERROR, error_code(error)))
         raise
     finally:
         root.end()
