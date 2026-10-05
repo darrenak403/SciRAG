@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { api } from "@/lib/api-client";
-import type { Chat } from "@/lib/types";
+import type { AskMode, Chat } from "@/lib/types";
 
 // The research sessions used last. The sidebar and the Ask page show the same list.
 
@@ -38,20 +38,31 @@ export function useRecentResearch(): Chat[] | null {
 
 const QUESTION_KEY = "scientrag:first-question:";
 
+// What a session asks: the papers named, or whatever a collection holds.
+export type Scope = string[] | { collectionId: string };
+
 /**
- * Opens a new research session over these papers and returns its address.
+ * Opens a new research session over this scope and returns its address.
  * A question given here is asked as soon as the session opens.
  */
-export async function startResearch(paperIds: string[], question?: string): Promise<string> {
-  const chat = await api<Chat>("/chats", { method: "POST", json: { paper_ids: paperIds } });
-  if (question?.trim()) sessionStorage.setItem(QUESTION_KEY + chat.id, question.trim());
+export async function startResearch(scope: Scope, question?: string, mode: AskMode = "auto"): Promise<string> {
+  const json = Array.isArray(scope) ? { paper_ids: scope } : { collection_id: scope.collectionId };
+  const chat = await api<Chat>("/chats", { method: "POST", json });
+  if (question?.trim()) {
+    sessionStorage.setItem(QUESTION_KEY + chat.id, JSON.stringify({ question: question.trim(), mode }));
+  }
   void refreshRecentResearch();
   return `/research/${chat.id}`;
 }
 
-/** The question typed before the session existed. Returned once. */
-export function takeFirstQuestion(chatId: string): string | null {
-  const question = sessionStorage.getItem(QUESTION_KEY + chatId);
-  if (question) sessionStorage.removeItem(QUESTION_KEY + chatId);
-  return question;
+/** The question typed before the session existed, and the kind of answer asked for. Returned once. */
+export function takeFirstQuestion(chatId: string): { question: string; mode: AskMode } | null {
+  const stored = sessionStorage.getItem(QUESTION_KEY + chatId);
+  if (!stored) return null;
+  sessionStorage.removeItem(QUESTION_KEY + chatId);
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
 }

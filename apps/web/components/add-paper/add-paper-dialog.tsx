@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { useAddPaper } from "@/components/add-paper/add-paper-provider";
 import { DropZone } from "@/components/add-paper/drop-zone";
 import { FileRow } from "@/components/add-paper/file-row";
 import { ReadyActions } from "@/components/add-paper/ready-actions";
 import { useSession } from "@/components/app-shell/session";
+import { AddToCollectionDialog } from "@/components/collections/collection-dialogs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,6 +22,7 @@ export function AddPaperDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const { items, started, addFiles, removeItem, start, reset } = useAddPaper();
   const processing = useProcessing();
   const input = useRef<HTMLInputElement>(null);
+  const [collecting, setCollecting] = useState<string[] | null>(null);
 
   const byId = new Map(processing.map((paper) => [paper.id, paper]));
   const uploaded = items.flatMap((item): Paper[] => {
@@ -90,11 +92,12 @@ export function AddPaperDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   onRemove={() => removeItem(item.key)}
                   onReplace={replace}
                   onNavigate={close}
+                  onCollect={(paperId) => setCollecting([paperId])}
                 />
               ))}
             </ul>
           )}
-          {started && !sending && <ReadyActions papers={uploaded} onNavigate={close} />}
+          {started && !sending && <ReadyActions papers={uploaded} onNavigate={close} onCollect={setCollecting} />}
         </div>
 
         <DialogFooter>
@@ -121,6 +124,7 @@ export function AddPaperDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           )}
         </DialogFooter>
       </DialogContent>
+      <AddToCollectionDialog paperIds={collecting} onClose={() => setCollecting(null)} />
     </Dialog>
   );
 }

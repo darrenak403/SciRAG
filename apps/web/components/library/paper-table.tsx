@@ -19,7 +19,7 @@ import { authorLine } from "@/lib/format";
 import { failureOf } from "@/lib/paper-status";
 import type { Paper } from "@/lib/types";
 
-export type PaperAction = "ask" | "edit" | "retry" | "delete";
+export type PaperAction = "ask" | "edit" | "collect" | "retry" | "delete";
 
 export function PaperTable({
   papers,
@@ -87,6 +87,7 @@ export function PaperTable({
                 <DropdownMenuItem onClick={() => onAction("ask", paper)}>Ask this paper</DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => onAction("edit", paper)}>Edit information</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAction("collect", paper)}>Add to collection</DropdownMenuItem>
               {paper.status === "FAILED" && (
                 <DropdownMenuItem onClick={() => onAction("retry", paper)}>Retry processing</DropdownMenuItem>
               )}

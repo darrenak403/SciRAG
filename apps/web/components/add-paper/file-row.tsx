@@ -44,6 +44,7 @@ export function FileRow({
   onRemove,
   onReplace,
   onNavigate,
+  onCollect,
 }: {
   item: FileItem;
   // The paper the file became, as the server sees it now.
@@ -51,6 +52,8 @@ export function FileRow({
   onRemove: () => void;
   onReplace: () => void;
   onNavigate: () => void;
+  // Asks which collection the paper should go into.
+  onCollect: (paperId: string) => void;
 }) {
   const settled = paper && (paper.status === "READY" || paper.status === "FAILED");
   return (
@@ -93,6 +96,14 @@ export function FileRow({
             >
               Open existing paper
             </Link>
+            {/* Nothing is uploaded twice: the paper already there is what goes into the collection. */}
+            <button
+              type="button"
+              onClick={() => item.paperId && onCollect(item.paperId)}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              Add to collection
+            </button>
           </div>
         )}
         {item.state === "uploaded" && paper?.status === "READY" && (

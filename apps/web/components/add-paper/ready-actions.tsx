@@ -10,17 +10,17 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { messageOf } from "@/lib/api-client";
 import { plural } from "@/lib/format";
 import { isInProgress } from "@/lib/paper-status";
-import { startResearch } from "@/lib/research";
-import type { Paper } from "@/lib/types";
+import { type Scope, startResearch } from "@/lib/research";
+import type { AskMode, Paper } from "@/lib/types";
 
-/** Opens a research session over these papers. */
+/** Opens a research session over these papers, or over a collection. */
 export function useAskPapers(onNavigate?: () => void) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  async function ask(paperIds: string[], question?: string) {
+  async function ask(scope: Scope, question?: string, mode?: AskMode) {
     setBusy(true);
     try {
-      router.push(await startResearch(paperIds, question));
+      router.push(await startResearch(scope, question, mode));
       onNavigate?.();
     } catch (error) {
       toast.error(messageOf(error));
@@ -35,7 +35,16 @@ export function useAskPapers(onNavigate?: () => void) {
  * What to do next with the papers of an upload: the step after "ready" is offered
  * here, so nobody has to go and look for the paper they just added.
  */
-export function ReadyActions({ papers, onNavigate }: { papers: Paper[]; onNavigate: () => void }) {
+export function ReadyActions({
+  papers,
+  onNavigate,
+  onCollect,
+}: {
+  papers: Paper[];
+  onNavigate: () => void;
+  // Asks which collection these papers should go into.
+  onCollect: (paperIds: string[]) => void;
+}) {
   const { ask, busy } = useAskPapers(onNavigate);
   const ready = papers.filter((paper) => paper.status === "READY");
   const running = papers.filter(isInProgress);
@@ -89,6 +98,9 @@ export function ReadyActions({ papers, onNavigate }: { papers: Paper[]; onNaviga
               Open library
             </Link>
           )}
+          <Button variant="outline" onClick={() => onCollect(readyIds)}>
+            {single ? "Add to collection" : "Create collection"}
+          </Button>
         </div>
       )}
     </div>

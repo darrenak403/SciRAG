@@ -23,7 +23,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
@@ -78,11 +77,13 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton disabled aria-disabled>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/collections")}
+                  render={<Link href="/collections" onClick={close} />}
+                >
                   <FolderClosed />
                   <span>Collections</span>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="text-muted-foreground">Soon</SidebarMenuBadge>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

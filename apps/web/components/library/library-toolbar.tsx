@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { Collection } from "@/lib/types";
 
 export const SORTS = {
   added: { label: "Recently added", sort: "added", order: "desc" },
@@ -28,19 +29,25 @@ export type LibraryQuery = {
   status: keyof typeof STATUS_FILTERS;
   year: string;
   author: string;
+  // The id of the collection whose papers are listed; empty for the whole library.
+  collection: string;
   sort: keyof typeof SORTS;
 };
 
-export const EMPTY_QUERY: LibraryQuery = { q: "", status: "all", year: "", author: "", sort: "added" };
+export const EMPTY_QUERY: LibraryQuery = { q: "", status: "all", year: "", author: "", collection: "", sort: "added" };
 
 export function LibraryToolbar({
   query,
   onChange,
+  collections,
 }: {
   query: LibraryQuery;
   onChange: (changes: Partial<LibraryQuery>) => void;
+  collections: Collection[];
 }) {
-  const filters = [query.status !== "all", query.year !== "", query.author !== ""].filter(Boolean).length;
+  const filters = [query.status !== "all", query.year !== "", query.author !== "", query.collection !== ""].filter(
+    Boolean,
+  ).length;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -98,8 +105,29 @@ export function LibraryToolbar({
               placeholder="Any author"
             />
           </div>
+          {collections.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="filter-collection">Collection</Label>
+              <NativeSelect
+                id="filter-collection"
+                value={query.collection}
+                onChange={(event) => onChange({ collection: event.target.value })}
+              >
+                <option value="">Any collection</option>
+                {collections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
           {filters > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => onChange({ status: "all", year: "", author: "" })}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onChange({ status: "all", year: "", author: "", collection: "" })}
+            >
               Clear filters
             </Button>
           )}

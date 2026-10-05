@@ -12,6 +12,7 @@ import { Composer } from "@/components/research/composer";
 import { SourceSelector } from "@/components/research/source-selector";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useCollections } from "@/lib/collections";
 import { plural, relativeDay } from "@/lib/format";
 import { providerProblem } from "@/lib/provider-errors";
 import { useRecentResearch } from "@/lib/research";
@@ -36,7 +37,11 @@ export default function AskPage() {
   const [question, setQuestion] = useState("");
   // null: every ready paper, including ones that become ready while the page is open.
   const [chosen, setChosen] = useState<string[] | null>(null);
-  const sources = chosen ?? papers?.map((paper) => paper.id) ?? [];
+  const collections = useCollections() ?? [];
+  // Set when the question goes to a whole collection instead of papers picked here.
+  const [collectionId, setCollectionId] = useState<string | null>(null);
+  const collection = collections.find((known) => known.id === collectionId);
+  const sources = collection?.paper_ids ?? chosen ?? papers?.map((paper) => paper.id) ?? [];
   const noProvider = providerProblem(user.active_connection_id ? null : "provider_not_configured");
 
   return (
@@ -62,7 +67,7 @@ export default function AskPage() {
             <Composer
               value={question}
               onChange={setQuestion}
-              onSend={() => ask(sources, question)}
+              onSend={() => ask(collection ? { collectionId: collection.id } : sources, question)}
               disabled={busy || sources.length === 0}
               placeholder="Ask a question about your papers…"
               autoFocus
@@ -70,7 +75,17 @@ export default function AskPage() {
               <Button type="button" variant="ghost" size="sm" onClick={openAddPaper}>
                 <Paperclip /> Add papers
               </Button>
-              <SourceSelector papers={papers ?? []} selected={sources} onApply={setChosen} />
+              <SourceSelector
+                papers={papers ?? []}
+                selected={sources}
+                onApply={(paperIds) => {
+                  setChosen(paperIds);
+                  setCollectionId(null);
+                }}
+                collections={collections}
+                collectionId={collection?.id ?? null}
+                onApplyCollection={setCollectionId}
+              />
             </Composer>
             {papers?.length === 0 && (
               <p className="text-center text-sm text-muted-foreground">

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAddPaper } from "@/components/add-paper/add-paper-provider";
 import { useAskPapers } from "@/components/add-paper/ready-actions";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { AddToCollectionDialog } from "@/components/collections/collection-dialogs";
 import {
   EMPTY_QUERY,
   type LibraryQuery,
@@ -30,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, messageOf } from "@/lib/api-client";
+import { useCollections } from "@/lib/collections";
 import { plural } from "@/lib/format";
 import { forget, useProcessing } from "@/lib/processing-store";
 import type { Paper, PaperPage } from "@/lib/types";
@@ -43,6 +45,7 @@ function searchOf(query: LibraryQuery, page: number): string {
   if (query.q.trim()) params.set("q", query.q.trim());
   if (query.author.trim()) params.set("author", query.author.trim());
   if (/^\d{4}$/.test(query.year)) params.set("year", query.year);
+  if (query.collection) params.set("collection_id", query.collection);
   for (const status of STATUS_FILTERS[query.status].statuses) params.append("status", status);
   params.set("sort", SORTS[query.sort].sort);
   params.set("order", SORTS[query.sort].order);
@@ -62,6 +65,8 @@ export default function LibraryPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Paper | null>(null);
   const [deleting, setDeleting] = useState<Paper | null>(null);
+  const [collecting, setCollecting] = useState<Paper | null>(null);
+  const collections = useCollections() ?? [];
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchOf(query, page)), TYPING_PAUSE_MS);
@@ -99,6 +104,7 @@ export default function LibraryPage() {
       if (action === "ask") void ask([paper.id]);
       else if (action === "edit") setEditing(paper);
       else if (action === "delete") setDeleting(paper);
+      else if (action === "collect") setCollecting(paper);
       else void retryProcessing(paper.id);
     },
     [ask],
@@ -143,7 +149,7 @@ export default function LibraryPage() {
           </div>
         ) : (
           <>
-            <LibraryToolbar query={query} onChange={change} />
+            <LibraryToolbar query={query} onChange={change} collections={collections} />
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}{" "}
@@ -188,6 +194,12 @@ export default function LibraryPage() {
       </div>
 
       <MetadataDialog paper={editing} onClose={() => setEditing(null)} onSaved={() => void load()} />
+      <AddToCollectionDialog
+        paperIds={collecting ? [collecting.id] : null}
+        onClose={() => setCollecting(null)}
+        // The list may be filtered by the collection the paper just went into.
+        onAdded={() => void load()}
+      />
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
