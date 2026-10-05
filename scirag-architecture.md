@@ -4,7 +4,7 @@ Cập nhật: 05/10/2026. Tài liệu mô tả hệ thống **đúng như code h
 
 ## 1. Mục tiêu và phạm vi
 
-ScientRAG là hệ thống hỏi đáp trên bài báo khoa học do người dùng tải lên. Hệ thống phải làm được bốn việc:
+SciRAG là hệ thống hỏi đáp trên bài báo khoa học do người dùng tải lên. Hệ thống phải làm được bốn việc:
 
 1. Trả lời câu hỏi cụ thể trong một hoặc vài paper ("Bảng 3 báo cáo F1 bao nhiêu cho BERT-base trên SciERC?").
 2. So sánh nhiều paper theo một tiêu chí (phương pháp, dataset, kết quả).
@@ -407,7 +407,7 @@ Trace chứa câu hỏi và nội dung paper, nên cổng của Phoenix chỉ m�
 ## 11. Cấu trúc mã nguồn
 
 ```text
-ScientRAG/
+SciRAG/
 ├── apps/
 │   ├── api/            FastAPI: routers (auth, papers, chunks, chats, collections,
 │   │                   providers), schemas, SSE, giới hạn kích thước upload

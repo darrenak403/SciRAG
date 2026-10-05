@@ -13,7 +13,7 @@ import type { User } from "@/lib/types";
 
 const COPY = {
   login: {
-    title: "Sign in to ScientRAG",
+    title: "Sign in to SciRAG",
     submit: "Sign in",
     busy: "Signing in…",
     other: { text: "New here?", link: "Create an account", href: "/register" },
@@ -53,7 +53,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     // POST, so a submit before the page's script has loaded never puts the password in the address.
     <form method="post" onSubmit={submit} className="flex w-full max-w-sm flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-muted-foreground">ScientRAG</p>
+        <p className="text-sm font-medium text-muted-foreground">SciRAG</p>
         <h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1>
       </div>
 

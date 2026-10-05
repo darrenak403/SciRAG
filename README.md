@@ -208,7 +208,7 @@ src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  evaluation (bộ đo)
 tests/           unit và integration
 eval/            bộ câu hỏi golden và cấu hình thí nghiệm
-scient-rag-architecture.md  kiến trúc của hệ thống
+scirag-architecture.md  kiến trúc của hệ thống
 docs/decisions/  quyết định kỹ thuật đã chốt
 docs/screenshots/ ảnh chụp các màn hình chính
 ```

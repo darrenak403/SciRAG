@@ -55,7 +55,7 @@ export default function AskPage() {
             <Alert>
               <AlertTitle>Set up your model provider to get started</AlertTitle>
               <AlertDescription>
-                ScientRAG reads papers and answers questions with your own key.{" "}
+                SciRAG reads papers and answers questions with your own key.{" "}
                 <Link href="/settings" className="font-medium underline underline-offset-4">
                   Open settings
                 </Link>

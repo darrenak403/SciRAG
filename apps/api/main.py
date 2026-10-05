@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await get_engine().dispose()
 
 
-app = FastAPI(title="ScientRAG API", lifespan=lifespan)
+app = FastAPI(title="SciRAG API", lifespan=lifespan)
 app.add_middleware(BodySizeLimit)
 app.include_router(health.router)
 app.include_router(auth.router)

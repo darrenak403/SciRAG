@@ -53,7 +53,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <Link href="/" onClick={close} className="px-2 py-1.5 text-sm font-semibold tracking-tight">
-          ScientRAG
+          SciRAG
         </Link>
       </SidebarHeader>
 

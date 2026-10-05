@@ -35,7 +35,7 @@ const PROBLEMS: Record<string, ProviderProblem> = {
     openSettings: false,
   },
   capability_missing: {
-    title: "This connection is missing something ScientRAG needs",
+    title: "This connection is missing something SciRAG needs",
     hint: "Open Settings to see which check failed.",
     openSettings: true,
   },

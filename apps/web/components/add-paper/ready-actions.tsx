@@ -77,7 +77,7 @@ export function ReadyActions({
       {running.length > 0 && (
         <p className="text-sm text-muted-foreground">
           {single ? "Your paper is being prepared." : "Your papers are being prepared."} You can continue using
-          ScientRAG. {single ? "It" : "They"} will appear as ready when processing finishes.
+          SciRAG. {single ? "It" : "They"} will appear as ready when processing finishes.
         </p>
       )}
       {ready.length > 0 && (

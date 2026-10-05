@@ -291,7 +291,7 @@ export function ModelProviders() {
         <div>
           <h2 className="text-base font-medium">Model providers</h2>
           <p className="text-sm text-muted-foreground">
-            ScientRAG reads papers and answers questions with your own key. One connection is used for
+            SciRAG reads papers and answers questions with your own key. One connection is used for
             everything.
           </p>
         </div>
