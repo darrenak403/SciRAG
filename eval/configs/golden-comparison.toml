@@ -1,0 +1,7 @@
+# Comparisons over two to four papers, scored by a model.
+name = "golden-comparison"
+dataset = "golden"
+mode = "answer"
+kinds = ["comparison"]
+judge = true
+concurrency = 2

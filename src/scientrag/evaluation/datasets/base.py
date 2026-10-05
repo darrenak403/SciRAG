@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 from scientrag.parsing.document import ScientificDocument
+from scientrag.rag.types import Mode
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,10 @@ class EvalQuestion:
     reference: str | None
     answerable: bool = True
     kind: str = "factual"
+    # The path that answers it: one answer, a table over the papers, or a review across them.
+    mode: Mode = "factual"
+    # Papers an answer should draw on, for a question asked of many. Empty: not scored.
+    expected_papers: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

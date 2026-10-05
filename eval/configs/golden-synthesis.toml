@@ -1,0 +1,7 @@
+# Reviews across all twelve papers, scored by a model.
+name = "golden-synthesis"
+dataset = "golden"
+mode = "answer"
+kinds = ["synthesis"]
+judge = true
+concurrency = 1

@@ -1,0 +1,5 @@
+# Is each question of the project sets taken for the kind it was written as?
+name = "golden-classify"
+dataset = "golden"
+mode = "classify"
+kinds = ["factual", "comparison", "synthesis"]

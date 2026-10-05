@@ -4,6 +4,8 @@ from scientrag.chunking.scientific_chunker import chunk_document
 from scientrag.config import get_settings
 from scientrag.evaluation import judges, metrics, report, runner
 from scientrag.evaluation.datasets import qasper
+from scientrag.rag.paths.comparison import NOT_FOUND
+from scientrag.rag.types import Done, Source, Sources
 
 PAPER = {
     "title": "A Study of Widgets",
@@ -184,3 +186,38 @@ def test_a_question_is_scored_on_the_passages_ranked_and_on_those_found_before_r
     assert scores["candidate_recall"] == 1.0
     # Only as many passages as reach the model are scored.
     assert "recall@5" not in scores
+
+
+def _source(marker: str, paper: str) -> Source:
+    return Source(marker, f"chunk-{marker}", paper, f"Paper {paper}", 1, [], "")
+
+
+def test_an_answer_is_scored_on_the_expected_papers_it_was_given_and_cites():
+    sources = Sources([_source("S1", "a"), _source("S2", "b"), _source("S3", "c")])
+    done = Done("text", [sources.sources[0], sources.sources[2]], "answered", "trace")
+
+    scores = runner._paper_scores(sources, done, expected={"a", "b", "d"})
+
+    assert scores["source_coverage"] == pytest.approx(2 / 3)
+    assert scores["paper_coverage"] == pytest.approx(1 / 3)
+    assert scores["papers_cited"] == 2
+
+
+def test_the_cells_of_a_comparison_are_judged_with_its_summary():
+    table = {
+        "columns": ["Method", "Dataset"],
+        "rows": [
+            {
+                "paper_id": "a",
+                "paper_title": "Paper a",
+                "cells": [
+                    {"text": "Uses widgets.", "markers": ["S1", "S2"]},
+                    {"text": NOT_FOUND, "markers": []},
+                ],
+            }
+        ],
+    }
+    done = Done("Both differ [S1].", [], "answered", "trace", table=table)
+
+    assert runner._judged_text(done) == "Paper a, Method: Uses widgets [S1][S2].\nBoth differ [S1]."
+    assert runner._judged_text(Done("Plain [S1].", [], "answered", "trace")) == "Plain [S1]."

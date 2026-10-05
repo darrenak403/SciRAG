@@ -6,6 +6,10 @@ eval/golden/factual.jsonl holds the questions:
 from the paper], "reference_answer", "type"}. A question the papers cannot
 answer has no evidence and a null reference answer.
 
+comparison.jsonl and synthesis.jsonl hold the questions asked of several papers:
+{"id", "question", "paper_ids": [keys in scope], "expected_papers": [keys an
+answer should draw on], "type"}.
+
 PDFs are downloaded and parsed once; both are kept in the cache directory.
 """
 
@@ -20,6 +24,8 @@ from scientrag.evaluation.datasets.base import EvalDataset, EvalPaper, EvalQuest
 from scientrag.parsing.document import ScientificDocument
 
 GOLDEN_DIR = Path("eval/golden")
+# One file of questions for each way a question is answered.
+MODES = ("factual", "comparison", "synthesis")
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:
@@ -55,14 +61,21 @@ def load(cache: Path, directory: Path = GOLDEN_DIR) -> EvalDataset:
             id=row["id"],
             text=row["question"],
             paper_keys=row["paper_ids"],
-            evidence=row["evidence_chunk_text"],
-            reference=row["reference_answer"],
-            answerable=bool(row["evidence_chunk_text"]),
+            evidence=row.get("evidence_chunk_text", []),
+            reference=row.get("reference_answer"),
+            # Only a factual question says it cannot be answered by having no evidence.
+            answerable=mode != "factual" or bool(row["evidence_chunk_text"]),
             kind=row.get("type", "factual"),
+            mode=mode,
+            expected_papers=row.get("expected_papers", []),
         )
-        for row in _rows(directory / "factual.jsonl")
+        for mode in MODES
+        for row in _rows(directory / f"{mode}.jsonl")
     ]
-    unknown = {key for question in questions for key in question.paper_keys} - set(papers)
+    named = {
+        key for question in questions for key in question.paper_keys + question.expected_papers
+    }
+    unknown = named - set(papers)
     if unknown:
         raise ValueError(f"questions name papers that are not in papers.jsonl: {sorted(unknown)}")
     return EvalDataset(name="golden", papers=papers, questions=questions)

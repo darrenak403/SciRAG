@@ -1,10 +1,12 @@
 """Runs a question set through the system and scores what comes back.
 
-Two modes. retrieval stops each question once the passages are chosen: no
+Three modes. retrieval stops each question once the passages are chosen: no
 answer is written, so many configurations can be compared cheaply. answer lets
 the question run to the end and scores the answer and its citations as well.
-
 Both go through rag.engine.answer, the path a user's question takes.
+
+classify only asks what kind of question each one is, and scores that against
+the kind it was written as.
 """
 
 import asyncio
@@ -29,8 +31,9 @@ from scientrag.evaluation.evidence_mapping import covering_chunks
 from scientrag.providers.base import ModelProvider
 from scientrag.providers.errors import ProviderError
 from scientrag.providers.resolve import connection_provider
-from scientrag.rag import citation, engine
-from scientrag.rag.types import Delta, Done, Sources
+from scientrag.rag import analyzer, citation, engine
+from scientrag.rag.paths.comparison import NOT_FOUND, NOT_STATED
+from scientrag.rag.types import Delta, Done, Mode, Sources
 
 # The settings an experiment may change. Anything else stays as the application runs it.
 TUNABLE = frozenset(
@@ -42,6 +45,9 @@ TUNABLE = frozenset(
         "context_chunks",
         "context_max_tokens",
         "answer_max_tokens",
+        "multi_paper_max_papers",
+        "multi_paper_chunks",
+        "evidence_min_relevance",
     }
 )
 RECALL_AT = (1, 3, 5, 8)
@@ -52,7 +58,9 @@ RECALL_AT = (1, 3, 5, 8)
 class RunConfig:
     name: str
     dataset: Literal["qasper", "golden"]
-    mode: Literal["retrieval", "answer"] = "retrieval"
+    mode: Literal["retrieval", "answer", "classify"] = "retrieval"
+    # Which questions of the dataset are asked, by the way they are answered.
+    kinds: list[Mode] = field(default_factory=lambda: ["factual"])
     # QASPER only: how many papers of the development split, and the seed that picks them.
     papers: int = 100
     seed: int = 7
@@ -142,6 +150,44 @@ async def _judge(
         row["cited_sentences"] = verdicts
 
 
+def _judged_text(done: Done) -> str:
+    """What the reader is told: the cells of a comparison count as much as its summary."""
+    if done.table is None:
+        return done.text
+    lines = [
+        f"{row['paper_title']}, {column}: {cell['text'].rstrip('.')} "
+        f"{''.join(f'[{marker}]' for marker in cell['markers'])}."
+        for row in done.table["rows"]
+        for column, cell in zip(done.table["columns"], row["cells"], strict=True)
+        if cell["text"] not in (NOT_STATED, NOT_FOUND)
+    ]
+    return "\n".join([*lines, done.text])
+
+
+def _paper_scores(sources: Sources, done: Done, expected: set[str]) -> dict[str, float]:
+    """How many of the papers an answer should draw on it was given, and how many it cites."""
+    offered = {str(source.paper_id) for source in sources.sources}
+    cited = {str(source.paper_id) for source in done.citations}
+    return {
+        "source_coverage": len(expected & offered) / len(expected),
+        "paper_coverage": len(expected & cited) / len(expected),
+        "papers_cited": len(cited),
+    }
+
+
+async def _classify(provider: ModelProvider, question: EvalQuestion) -> dict[str, Any]:
+    """Whether a question is taken for the kind it was written as."""
+    row: dict[str, Any] = {"id": question.id, "question": question.text, "kind": question.mode}
+    try:
+        found, _ = await analyzer.analyze(provider, [], question.text)
+    except ProviderError as error:
+        row["error"] = error.code
+        return row
+    row["classified_as"] = found
+    row["classified_correctly"] = row[f"correct_{question.mode}"] = float(found == question.mode)
+    return row
+
+
 async def _ask(
     config: RunConfig,
     connection: ProviderConnection,
@@ -150,8 +196,10 @@ async def _ask(
     paper_ids: list,
     chunks: dict[str, str],
     evidence: list[set[str]],
+    expected: set[str],
 ) -> dict[str, Any]:
-    """One question, start to finish. chunks maps the id of every chunk in scope to its text."""
+    """One question, start to finish. chunks maps the id of every chunk in scope to its text;
+    expected holds the ids of the papers the answer should draw on."""
     row: dict[str, Any] = {
         "id": question.id,
         "question": question.text,
@@ -161,7 +209,10 @@ async def _ask(
     done: Done | None = None
     written: list[str] = []
     try:
-        answer = engine.answer(connection, question.text, paper_ids=paper_ids, history=[])
+        # The kind of question is given, not worked out: a wrong guess is measured on its own.
+        answer = engine.answer(
+            connection, question.text, paper_ids=paper_ids, history=[], mode=question.mode
+        )
         async with aclosing(answer):
             async for event in answer:
                 if isinstance(event, Sources):
@@ -171,7 +222,7 @@ async def _ask(
                         break
                 elif isinstance(event, Delta):
                     written.append(event.text)
-                else:
+                elif isinstance(event, Done):
                     done = event
     except ProviderError as error:
         row["error"] = error.code
@@ -182,7 +233,8 @@ async def _ask(
         return row
 
     retrieval = sources.retrieval
-    if get_settings().rerank_enabled and retrieval.get("rerank") != "model":
+    reranked = question.mode == "factual" and get_settings().rerank_enabled
+    if reranked and retrieval.get("rerank") != "model":
         # The answer path falls back to the search order when the fast model fails.
         # Scored here, that question would pass for a reranked one.
         row["error"] = "rerank_failed"
@@ -203,6 +255,10 @@ async def _ask(
     row["outcome"] = done.outcome
     # Right when it answers what can be answered and declines what cannot.
     row["answered_correctly"] = float((done.outcome == "answered") == question.answerable)
+    if expected:
+        row |= _paper_scores(sources, done, expected)
+    if question.mode == "comparison":
+        row["table_made"] = float(done.table is not None)
     markers = citation.markers("".join(written))
     offered = {source.marker for source in sources.sources}
     if markers:
@@ -211,7 +267,7 @@ async def _ask(
         row["answer_f1"] = metrics.token_f1(citation.without_markers(done.text), question.reference)
     if judge is not None and done.outcome == "answered":
         passages = {source.marker: chunks[str(source.chunk_id)] for source in sources.sources}
-        await _judge(judge, question, done.text, passages, row)
+        await _judge(judge, question, _judged_text(done), passages, row)
     return row
 
 
@@ -227,7 +283,7 @@ async def run(config: RunConfig, cache: Path) -> dict[str, Any]:
     )
     texts = await corpus.chunk_texts(list(paper_ids.values()))
 
-    questions = dataset.questions
+    questions = [question for question in dataset.questions if question.mode in config.kinds]
     if config.questions and config.questions < len(questions):
         questions = random.Random(config.seed).sample(questions, config.questions)
 
@@ -243,10 +299,20 @@ async def run(config: RunConfig, cache: Path) -> dict[str, Any]:
         unmapped += sum(1 for chunks in found if not chunks)
         evidence = [chunks for chunks in found if chunks]
         in_scope = {chunk_id: text for paper_id in scope for chunk_id, text in texts[paper_id]}
+        expected = {str(paper_ids[key]) for key in question.expected_papers}
         async with limit:
-            return await _ask(config, connection, judge, question, scope, in_scope, evidence)
+            return await _ask(
+                config, connection, judge, question, scope, in_scope, evidence, expected
+            )
 
-    if config.mode == "answer" and config.judge:
+    async def classified(question: EvalQuestion, provider: ModelProvider) -> dict[str, Any]:
+        async with limit:
+            return await _classify(provider, question)
+
+    if config.mode == "classify":
+        async with connection_provider(connection) as provider:
+            rows = await asyncio.gather(*(classified(question, provider) for question in questions))
+    elif config.mode == "answer" and config.judge:
         async with connection_provider(connection) as judge:
             rows = await asyncio.gather(*(one(question, judge) for question in questions))
     else:
