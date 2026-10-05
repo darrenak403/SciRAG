@@ -56,7 +56,7 @@ Cấu hình trong `.env` (đều có mặc định):
 
 ## Hỏi đáp
 
-Một cuộc trò chuyện gắn với một tập paper (`paper_ids`); câu hỏi chỉ được tìm trong các paper đó, và chỉ trong paper của chính tài khoản đang hỏi.
+Một cuộc trò chuyện gắn với một tập paper (`paper_ids`) hoặc một collection (`collection_id`: phạm vi là các paper đang nằm trong collection lúc hỏi); câu hỏi chỉ được tìm trong các paper đó, và chỉ trong paper của chính tài khoản đang hỏi.
 
 ```bash
 # tạo cuộc trò chuyện, rồi hỏi (cookie đăng nhập nằm trong file jar)
@@ -66,11 +66,23 @@ curl -N -b jar -X POST localhost:8000/chats/<id>/messages -H 'content-type: appl
   -d '{"content": "Adam dùng beta1 mặc định là bao nhiêu?"}'
 ```
 
+Câu hỏi có ba cách trả lời, chọn bằng `mode` trong body (mặc định `auto`: model nhanh tự xếp loại câu hỏi):
+
+| `mode` | Cách trả lời |
+|--------|--------------|
+| `factual` | Tìm các đoạn hợp nhất trong cả phạm vi rồi trả lời. Phạm vi một paper luôn đi đường này. |
+| `comparison` | Lấy vài đoạn từ từng paper, trả về một bảng (mỗi paper một hàng, ô nào cũng kèm nguồn) và một đoạn nhận xét. |
+| `synthesis` | Lấy vài đoạn từ từng paper, model nhanh chấm và tóm tắt từng đoạn, rồi viết bài gồm bốn phần: điểm chung, điểm khác, khoảng trống, kết luận. |
+
+Hai cách sau xem tối đa `MULTI_PAPER_MAX_PAPERS` paper; phạm vi lớn hơn thì chọn các paper sát câu hỏi nhất và câu trả lời ghi rõ đã xem bao nhiêu paper.
+
 Câu trả lời về dưới dạng server-sent events:
 
 | Event | Nội dung |
 |-------|----------|
 | `sources` | Các đoạn văn đưa cho model, mỗi đoạn một nhãn `S1`, `S2`… kèm paper, trang, mục. |
+| `status` | Câu so sánh và tổng hợp: `mode` đã chọn, bước đang làm (`selecting`, `gathering`, `comparing`, `writing`) và số đoạn đã đọc trên tổng số. |
+| `table` | Câu so sánh: `columns` và `rows`, mỗi paper một hàng, mỗi ô có `text` và các nhãn nguồn `markers`. |
 | `delta` | Từng mẩu chữ của câu trả lời, đúng như model viết ra. |
 | `done` | Bản cuối đã kiểm trích dẫn (nhãn không có trong `sources` bị bỏ), danh sách nhãn được dùng, và `outcome`: `answered`, `no_evidence` (không tìm thấy trong paper) hoặc `no_papers` (phạm vi không có paper nào đã xử lý xong). |
 | `error` | `code` và `message` khi nhà cung cấp model lỗi. Không có gì được lưu. |
@@ -79,12 +91,32 @@ Chỉ khi có `done` thì câu hỏi và câu trả lời mới được lưu; n
 
 Paper được index bằng model embedding khác với kết nối đang dùng thì không được tìm (vector khác không gian): gọi `POST /papers/reindex`.
 
-Mỗi câu hỏi là một trace trong Phoenix (project `scientrag`) với các bước `rewrite_question`, `retrieve`, `rerank`, `generate`. Trace chứa câu hỏi và các đoạn văn, nên cổng 6006 chỉ mở trên máy chạy Docker.
+Mỗi câu hỏi là một trace trong Phoenix (project `scientrag`) với các bước `rewrite_question` (`analyze_question` khi phải xếp loại câu hỏi), `embed_query`, `retrieve`, `rerank`, `generate`; câu tổng hợp có thêm `gather_evidence`. Trace chứa câu hỏi và các đoạn văn, nên cổng 6006 chỉ mở trên máy chạy Docker.
 
 | Biến | Mặc định | Ý nghĩa |
 |------|----------|---------|
 | `RERANK_ENABLED` | `true` | Tắt để bỏ bước model nhanh xếp hạng lại các đoạn tìm được (bớt một lời gọi model mỗi câu hỏi). |
 | `CONTEXT_CHUNKS` | `8` | Số đoạn văn tối đa đưa cho model trả lời. |
+| `MULTI_PAPER_MAX_PAPERS` | `20` | Số paper tối đa được xem trong một câu so sánh hoặc tổng hợp. |
+| `MULTI_PAPER_CHUNKS` | `3` | Số đoạn lấy từ mỗi paper trong câu so sánh hoặc tổng hợp. |
+| `MULTI_PAPER_PARALLEL_CALLS` | `4` | Số lời gọi model nhanh chạy cùng lúc khi chấm các đoạn cho câu tổng hợp. |
+| `EVIDENCE_MIN_RELEVANCE` | `4` | Đoạn bị model nhanh chấm dưới mức này (thang 0–10) không được đưa vào bài tổng hợp. |
+
+Một câu tổng hợp gọi model nhanh một lần cho mỗi đoạn: trên 12 paper là 36 lời gọi, khoảng 85 nghìn token vào. `GET /settings/rag` trả các giá trị server đang chạy; giao diện hiện chúng ở Settings → Advanced.
+
+## Collection
+
+Collection gom các paper của một tài khoản để hỏi chung. Paper vẫn nằm trong thư viện: xoá collection không xoá paper, và một paper có thể ở nhiều collection.
+
+| Lời gọi | Việc làm |
+|---------|----------|
+| `POST /collections` | Tạo, với `name`, `description` và `paper_ids` (tuỳ chọn). |
+| `GET /collections`, `GET /collections/{id}` | Danh sách, và một collection kèm `paper_ids`. |
+| `PATCH /collections/{id}` | Đổi tên hoặc mô tả. |
+| `DELETE /collections/{id}` | Xoá collection. |
+| `PUT` / `DELETE /collections/{id}/papers/{paper_id}` | Thêm hoặc bỏ một paper. |
+| `GET /papers?collection_id=…` | Các paper trong collection. |
+| `GET /chats?collection_id=…` | Các cuộc trò chuyện gắn với collection. |
 
 ## Đo chất lượng
 
@@ -103,12 +135,12 @@ docker compose run --rm --no-deps api \
 docker compose run --rm api python -m scientrag.evaluation.run --clean
 ```
 
-Hai bộ câu hỏi:
+Hai bộ dữ liệu:
 
 - **QASPER**: câu hỏi trên paper NLP, có đánh dấu đoạn bằng chứng. Tải về `eval-data/` ở lần chạy đầu. Paper ở dạng văn bản nên không đo được parser.
-- **Golden** (`eval/golden/`): câu hỏi của dự án trên PDF thật, đi qua parser thật. Cấu hình dùng bộ này phải chạy bằng image `worker` (thay `api` bằng `worker` trong lệnh trên) ở lần đầu, để parse PDF. Thêm câu hỏi: thêm một dòng vào `factual.jsonl`, với `evidence_chunk_text` là các câu chép nguyên văn từ paper.
+- **Golden** (`eval/golden/`): câu hỏi của dự án trên PDF thật, đi qua parser thật. Cấu hình dùng bộ này phải chạy bằng image `worker` (thay `api` bằng `worker` trong lệnh trên) ở lần đầu, để parse PDF. Thêm câu hỏi: thêm một dòng vào `factual.jsonl`, với `evidence_chunk_text` là các câu chép nguyên văn từ paper. `comparison.jsonl` và `synthesis.jsonl` là câu hỏi trên nhiều paper; mỗi câu ghi `expected_papers`, các paper phải có mặt trong trích dẫn.
 
-Mỗi file trong `eval/configs/` là một thí nghiệm, đổi một thứ so với `baseline.toml` (các file `*-no-rerank` so với `no-rerank.toml`). Lượt nào có lỗi (`errors` khác 0 ở dòng đầu bảng, thường do key hết quota) thì chạy lại trước khi dùng số. `mode = "retrieval"` dừng ở bước chọn đoạn văn (rẻ); `mode = "answer"` chạy tới câu trả lời, và `judge = true` dùng model chấm thêm. Kết quả và cấu hình đã chốt: [docs/decisions/0002-eval-results-and-config.md](docs/decisions/0002-eval-results-and-config.md).
+Mỗi file trong `eval/configs/` là một thí nghiệm, đổi một thứ so với `baseline.toml` (các file `*-no-rerank` so với `no-rerank.toml`). Lượt nào có lỗi (`errors` khác 0 ở dòng đầu bảng, thường do key hết quota) thì chạy lại trước khi dùng số. `mode = "retrieval"` dừng ở bước chọn đoạn văn (rẻ); `mode = "answer"` chạy tới câu trả lời, và `judge = true` dùng model chấm thêm. Với bộ golden, `kinds` chọn loại câu hỏi được chạy (mặc định `["factual"]`), và `mode = "classify"` chỉ đo việc xếp loại câu hỏi. Kết quả và cấu hình đã chốt: [docs/decisions/0002-eval-results-and-config.md](docs/decisions/0002-eval-results-and-config.md); phần nhiều paper: [docs/decisions/0003-multi-paper-config.md](docs/decisions/0003-multi-paper-config.md).
 
 ## Test và kiểm tra code
 
@@ -151,7 +183,8 @@ apps/web/        giao diện Next.js: app (các trang), components, lib (gọi A
 src/scientrag/   config, db (models, repositories, migrations), auth, storage,
                  providers (Gemini, Bedrock, OpenAI-compatible), parsing, chunking,
                  index (Qdrant), ingestion (các bước và workflow), access (quyền đọc paper),
-                 rag (tìm, xếp hạng, dựng ngữ cảnh, kiểm trích dẫn), telemetry (trace),
+                 rag (xếp loại câu hỏi, tìm, xếp hạng, dựng ngữ cảnh, ba đường trả lời, kiểm trích dẫn),
+                 telemetry (trace),
                  evaluation (bộ đo)
 tests/           unit và integration
 eval/            bộ câu hỏi golden và cấu hình thí nghiệm
