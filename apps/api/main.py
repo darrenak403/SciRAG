@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from apps.api.middleware import BodySizeLimit
-from apps.api.routers import auth, chats, chunks, health, papers, providers
+from apps.api.routers import auth, chats, chunks, collections, health, papers, providers
 from scientrag.auth.secrets import get_fernet
 from scientrag.config import get_settings
 from scientrag.db.engine import get_engine
@@ -38,6 +38,7 @@ app.include_router(auth.router)
 app.include_router(papers.router)
 app.include_router(providers.router)
 app.include_router(chats.router)
+app.include_router(collections.router)
 app.include_router(chunks.router)
 
 

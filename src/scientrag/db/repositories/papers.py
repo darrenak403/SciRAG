@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.db.models import Author, Paper, PaperAuthor
+from scientrag.db.models import Author, Collection, CollectionPaper, Paper, PaperAuthor
 
 SortField = Literal["added", "year", "title", "author"]
 SortOrder = Literal["asc", "desc"]
@@ -64,6 +64,7 @@ async def list_papers(
     statuses: Sequence[str] | None = None,
     year: int | None = None,
     author: str | None = None,
+    collection_id: uuid.UUID | None = None,
     sort: SortField = "added",
     order: SortOrder = "desc",
     page: int = 1,
@@ -84,6 +85,18 @@ async def list_papers(
             .where(
                 PaperAuthor.paper_id == Paper.id,
                 Author.name.icontains(author, autoescape=True),
+            )
+            .exists()
+        )
+    if collection_id is not None:
+        conditions.append(
+            select(CollectionPaper.paper_id)
+            .join(Collection, Collection.id == CollectionPaper.collection_id)
+            .where(
+                CollectionPaper.paper_id == Paper.id,
+                CollectionPaper.collection_id == collection_id,
+                # Someone else's collection filters to nothing.
+                Collection.owner_id == owner_id,
             )
             .exists()
         )

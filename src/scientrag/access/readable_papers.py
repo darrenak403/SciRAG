@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from scientrag.db.models import Paper, PaperStatus
+from scientrag.db.repositories import collections as collections_repo
 
 
 async def readable_papers(
@@ -24,3 +25,14 @@ async def readable_papers(
     if ready_only:
         query = query.where(Paper.status == PaperStatus.READY)
     return list(await db.scalars(query.order_by(Paper.id)))
+
+
+async def readable_collection_papers(
+    db: AsyncSession, user_id: uuid.UUID, collection_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """The papers of a collection the account may read, in the order they were added.
+
+    Empty for a collection that is not the account's, the same as for one that is gone.
+    """
+    found = await collections_repo.paper_ids(db, user_id, [collection_id])
+    return found[collection_id]

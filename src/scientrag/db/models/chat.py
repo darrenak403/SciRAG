@@ -18,8 +18,8 @@ class ChatSession(Entity, Base):
     )
     # Null until named: the first question becomes the title.
     title: Mapped[str | None] = mapped_column(Text)
-    # What the session searches: {"paper_ids": [...]}. Each question uses the scope
-    # as it is when the question is asked.
+    # What the session searches: {"paper_ids": [...]}, or {"collection_id": "..."} for
+    # whatever the collection holds. Each question uses the scope as it is when asked.
     scope: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
 
@@ -35,6 +35,10 @@ class ChatMessage(Entity, Base):
     # Assistant messages only: the trace of the answer, and how its passages were found.
     trace_id: Mapped[str | None] = mapped_column(String(32))
     retrieval: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # factual | comparison | synthesis: how the answer was produced, and so how it is shown.
+    mode: Mapped[str] = mapped_column(String(16), server_default="factual")
+    # A comparison's table: {"columns": [...], "rows": [{"paper_id", "paper_title", "cells"}]}.
+    table: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class MessageSource(Entity, Base):
