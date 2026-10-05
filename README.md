@@ -10,7 +10,7 @@ Hiện có:
 - Collection gom paper để hỏi chung; so sánh nhiều paper thành bảng; tổng hợp trên cả collection.
 - Giao diện web cho tất cả những việc trên, và bộ đo chất lượng chạy bằng một lệnh.
 
-Chưa có: chia sẻ collection giữa các tài khoản, cấu hình triển khai production. Kiến trúc chi tiết: [scient-rag-architecture.md](scient-rag-architecture.md).
+Chưa có: chia sẻ collection giữa các tài khoản, cấu hình triển khai production. Kiến trúc chi tiết: [scient-rag-architecture.md](scirag-architecture.md).
 
 ## Yêu cầu
 
