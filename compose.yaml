@@ -8,7 +8,7 @@ x-app: &app
     target: api
   env_file: .env
   environment:
-    DATABASE_URL: postgresql+psycopg://scientrag:${POSTGRES_PASSWORD}@postgres:5432/scientrag
+    DATABASE_URL: postgresql+psycopg://scirag:${POSTGRES_PASSWORD}@postgres:5432/scirag
     STORAGE_DIR: /data/storage
     QDRANT_URL: http://qdrant:6333
     # Set OTLP_ENDPOINT= (empty) in .env to send no traces.
@@ -26,17 +26,16 @@ x-app: &app
     - ./eval-results:/app/eval-results
 
 services:
-  # The database and its user keep the name the data was created under.
   postgres:
     image: postgres:18
     environment:
-      POSTGRES_USER: scientrag
+      POSTGRES_USER: scirag
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: scientrag
+      POSTGRES_DB: scirag
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scientrag -d scientrag"]
+      test: ["CMD-SHELL", "pg_isready -U scirag -d scirag"]
       interval: 2s
       timeout: 3s
       retries: 30

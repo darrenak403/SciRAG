@@ -13,8 +13,7 @@ from scirag.ingestion.queue import APPLICATION_VERSION, INGEST_QUEUE, system_dat
 def launch() -> None:
     DBOS(
         config={
-            # The name the workflow tables were created under: the engine refuses another.
-            "name": "scientrag",
+            "name": "scirag",
             "system_database_url": system_database_url(),
             "application_version": APPLICATION_VERSION,
         }
