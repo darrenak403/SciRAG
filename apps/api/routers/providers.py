@@ -15,9 +15,11 @@ from apps.api.schemas.providers import (
     ConnectionUpdate,
     GeminiCreate,
     ModelList,
+    RagConfigOut,
     UsageRow,
 )
 from scientrag.auth.secrets import encrypt_secret
+from scientrag.config import get_settings
 from scientrag.db.models import ProviderConnection
 from scientrag.db.repositories import provider_connections as connections_repo
 from scientrag.db.repositories import provider_usage as usage_repo
@@ -181,3 +183,9 @@ async def choose_active_connection(choice: ActiveConnectionChoice, user: Current
     user.active_connection_id = choice.connection_id
     await db.commit()
     return user
+
+
+@router.get("/rag", response_model=RagConfigOut)
+async def rag_config(user: CurrentUser):
+    """The search and answer settings this server runs with."""
+    return get_settings()

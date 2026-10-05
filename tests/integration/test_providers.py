@@ -304,3 +304,15 @@ async def test_another_user_cannot_test_or_list_models(alice: AsyncClient, bob: 
     assert (await bob.post(f"/settings/providers/{connection_id}/test")).status_code == 404
     assert (await bob.get(f"/settings/providers/{connection_id}/models")).status_code == 404
     assert (await bob.get("/settings/providers/usage")).json() == []
+
+
+async def test_the_search_settings_can_be_read_but_hold_nothing_secret(
+    anon: AsyncClient, alice: AsyncClient
+):
+    assert (await anon.get("/settings/rag")).status_code == 401
+
+    shown = (await alice.get("/settings/rag")).json()
+
+    assert shown["search_fusion"] == "rrf"
+    assert shown["multi_paper_max_papers"] == 20
+    assert not {"database_url", "secrets_key", "qdrant_url", "storage_dir"} & set(shown)

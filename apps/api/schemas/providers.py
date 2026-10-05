@@ -103,3 +103,22 @@ class UsageRow(BaseModel):
     role: str
     input_tokens: int
     output_tokens: int
+
+
+class RagConfigOut(BaseModel):
+    """How papers are searched and answers built on this server. Read-only, and holds
+    nothing secret: it is shown to anyone signed in who turns on the advanced view."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    chunk_max_tokens: int
+    search_candidates: int
+    search_fusion: str
+    rerank_enabled: bool
+    rerank_candidates: int
+    context_chunks: int
+    context_max_tokens: int
+    multi_paper_max_papers: int
+    multi_paper_chunks: int
+    multi_paper_parallel_calls: int
+    evidence_min_relevance: int
