@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.main import app
 from apps.api.routers.chats import _answer_events
-from scientrag.db.engine import get_engine
-from scientrag.db.models import ChatMessage, Paper, ProviderConnection, ProviderUsage
-from scientrag.telemetry.tracing import get_tracer_provider
+from scirag.db.engine import get_engine
+from scirag.db.models import ChatMessage, Paper, ProviderConnection, ProviderUsage
+from scirag.telemetry.tracing import get_tracer_provider
 from tests.rag_factory import (
     CONNECTION,
     OTHER_EMBEDDING_MODEL,
@@ -51,7 +51,7 @@ def spans() -> InMemorySpanExporter:
 def provider(monkeypatch: pytest.MonkeyPatch, spans: InMemorySpanExporter) -> None:
     ScriptedProvider.reset()
     spans.clear()
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", ScriptedProvider)
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", ScriptedProvider)
 
 
 @pytest.fixture
@@ -217,7 +217,7 @@ async def test_without_a_connection_the_question_is_refused_before_any_search(
     async def search(*args, **kwargs):
         raise AssertionError("the index must not be searched")
 
-    monkeypatch.setattr("scientrag.index.search.search", search)
+    monkeypatch.setattr("scirag.index.search.search", search)
 
     response = await alice.post(f"/chats/{chat_id}/messages", json={"content": QUESTION})
 
@@ -354,7 +354,7 @@ async def test_an_unexpected_failure_does_not_leak_its_details(
     async def search(*args, **kwargs):
         raise RuntimeError(f"cannot search for {QUESTION}")
 
-    monkeypatch.setattr("scientrag.index.search.search", search)
+    monkeypatch.setattr("scirag.index.search.search", search)
 
     received = await ask(owner, await new_chat(owner, paper))
 

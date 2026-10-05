@@ -12,12 +12,12 @@ from collections.abc import AsyncIterator, Iterator
 from cryptography.fernet import Fernet
 from sqlalchemy.engine import make_url
 
-TEST_DATABASE = "scientrag_test"
+TEST_DATABASE = "scirag_test"
 _dev_url = make_url(os.environ["DATABASE_URL"])
 os.environ["DATABASE_URL"] = _dev_url.set(database=TEST_DATABASE).render_as_string(
     hide_password=False
 )
-os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="scientrag-test-storage-")
+os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="scirag-test-storage-")
 os.environ["SECRETS_KEY"] = Fernet.generate_key().decode()
 os.environ["ALLOW_REGISTRATION"] = "true"
 # Small, so the size-limit test does not have to build a 50 MB file.
@@ -33,9 +33,9 @@ from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from apps.api.main import app  # noqa: E402
-from scientrag.auth import login_limiter  # noqa: E402
-from scientrag.db.engine import get_engine, get_sessionmaker  # noqa: E402
-from scientrag.ingestion.queue import create_tables  # noqa: E402
+from scirag.auth import login_limiter  # noqa: E402
+from scirag.db.engine import get_engine, get_sessionmaker  # noqa: E402
+from scirag.ingestion.queue import create_tables  # noqa: E402
 
 PASSWORD = "correct horse battery"
 

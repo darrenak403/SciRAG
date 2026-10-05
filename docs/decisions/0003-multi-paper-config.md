@@ -92,7 +92,7 @@ Chạy lại khi khóa có hạn mức (paper golden đã index sẵn trong tài
 
 ```bash
 docker compose run --rm -e GIT_COMMIT=$(git rev-parse --short HEAD) worker \
-  python -m scientrag.evaluation.run --config \
+  python -m scirag.evaluation.run --config \
   eval/configs/golden-classify.toml eval/configs/golden-comparison.toml eval/configs/golden-synthesis.toml
 ```
 

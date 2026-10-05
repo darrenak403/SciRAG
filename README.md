@@ -111,7 +111,7 @@ Chỉ khi có `done` thì câu hỏi và câu trả lời mới được lưu; n
 
 Paper được index bằng model embedding khác với kết nối đang dùng thì không được tìm (vector khác không gian): gọi `POST /papers/reindex`.
 
-Mỗi câu hỏi là một trace trong Phoenix (project `scientrag`) với các bước `rewrite_question` (`analyze_question` khi phải xếp loại câu hỏi), `embed_query`, `retrieve`, `rerank`, `generate`; câu tổng hợp có thêm `gather_evidence`. Trace chứa câu hỏi và các đoạn văn, nên cổng 6006 chỉ mở trên máy chạy Docker.
+Mỗi câu hỏi là một trace trong Phoenix (project `scirag`) với các bước `rewrite_question` (`analyze_question` khi phải xếp loại câu hỏi), `embed_query`, `retrieve`, `rerank`, `generate`; câu tổng hợp có thêm `gather_evidence`. Trace chứa câu hỏi và các đoạn văn, nên cổng 6006 chỉ mở trên máy chạy Docker.
 
 | Biến | Mặc định | Ý nghĩa |
 |------|----------|---------|
@@ -145,14 +145,14 @@ Bộ đo chạy câu hỏi qua đúng đường mà câu hỏi của người d�
 ```bash
 # một cấu hình: nạp paper (lần đầu), chạy câu hỏi, in bảng và lưu vào eval-results/
 docker compose run --rm -e GIT_COMMIT=$(git rev-parse --short HEAD) api \
-  python -m scientrag.evaluation.run --config eval/configs/baseline.toml
+  python -m scirag.evaluation.run --config eval/configs/baseline.toml
 
 # so sánh hai lần chạy
 docker compose run --rm --no-deps api \
-  python -m scientrag.evaluation.report eval-results/<a>.json eval-results/<b>.json
+  python -m scirag.evaluation.report eval-results/<a>.json eval-results/<b>.json
 
 # xoá các tài khoản đo cùng paper, point và file của chúng
-docker compose run --rm api python -m scientrag.evaluation.run --clean
+docker compose run --rm api python -m scirag.evaluation.run --clean
 ```
 
 Hai bộ dữ liệu:
@@ -178,7 +178,7 @@ docker compose exec web npx eslint app components lib
 docker compose build web      # chạy next build, lỗi type thì dừng
 ```
 
-Test chạy trong image `worker` vì chỉ image này có parser PDF (chạy bằng `api` cũng được, khi đó nhóm test parser bị bỏ qua). Cần `postgres` và `qdrant` đang chạy. Test dùng database riêng (`scientrag_test`) và các collection Qdrant riêng, tạo và xoá mỗi lần chạy; dữ liệu dev không bị đụng tới.
+Test chạy trong image `worker` vì chỉ image này có parser PDF (chạy bằng `api` cũng được, khi đó nhóm test parser bị bỏ qua). Cần `postgres` và `qdrant` đang chạy. Test dùng database riêng (`scirag_test`) và các collection Qdrant riêng, tạo và xoá mỗi lần chạy; dữ liệu dev không bị đụng tới.
 
 ## Migration
 
@@ -200,7 +200,7 @@ docker compose build
 apps/api/        FastAPI: routers, schemas, dependencies
 apps/worker/     tiến trình chạy các workflow xử lý PDF
 apps/web/        giao diện Next.js: app (các trang), components, lib (gọi API, SSE, upload)
-src/scientrag/   config, db (models, repositories, migrations), auth, storage,
+src/scirag/   config, db (models, repositories, migrations), auth, storage,
                  providers (Gemini, Bedrock, OpenAI-compatible), parsing, chunking,
                  index (Qdrant), ingestion (các bước và workflow), access (quyền đọc paper),
                  rag (xếp loại câu hỏi, tìm, xếp hạng, dựng ngữ cảnh, ba đường trả lời, kiểm trích dẫn),

@@ -1,7 +1,7 @@
 import uuid
 
-from scientrag.db.models import Chunk
-from scientrag.rag.context_builder import build_context
+from scirag.db.models import Chunk
+from scirag.rag.context_builder import build_context
 
 PAPER = uuid.uuid4()
 TITLES = {PAPER: 'Adam: A "Method" <for> Optimization'}

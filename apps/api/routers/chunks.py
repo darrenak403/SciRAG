@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from apps.api.deps import CurrentUser, Db
 from apps.api.schemas.chats import ChunkDetail
-from scientrag.db.models import Chunk, Paper
+from scirag.db.models import Chunk, Paper
 
 router = APIRouter(prefix="/chunks", tags=["chunks"])
 

@@ -1,4 +1,4 @@
-name: scientrag
+name: scirag
 
 # Shared by every service that runs project code. Source is bind-mounted so
 # edits on the host reach the container without rebuilding the image.
@@ -26,6 +26,7 @@ x-app: &app
     - ./eval-results:/app/eval-results
 
 services:
+  # The database and its user keep the name the data was created under.
   postgres:
     image: postgres:18
     environment:
@@ -58,7 +59,7 @@ services:
 
   migrate:
     <<: *app
-    command: sh -c "alembic upgrade head && python -m scientrag.ingestion.queue"
+    command: sh -c "alembic upgrade head && python -m scirag.ingestion.queue"
     depends_on:
       postgres:
         condition: service_healthy

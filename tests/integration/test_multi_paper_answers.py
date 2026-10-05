@@ -12,11 +12,11 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.config import get_settings
-from scientrag.db.models import Paper
-from scientrag.rag import prompts
-from scientrag.rag.engine import NO_EVIDENCE
-from scientrag.rag.paths.comparison import NOT_FOUND
+from scirag.config import get_settings
+from scirag.db.models import Paper
+from scirag.rag import prompts
+from scirag.rag.engine import NO_EVIDENCE
+from scirag.rag.paths.comparison import NOT_FOUND
 from tests.rag_factory import (
     CONNECTION,
     ScriptedProvider,
@@ -50,7 +50,7 @@ async def collections() -> AsyncIterator[None]:
 @pytest.fixture(autouse=True)
 def provider(monkeypatch: pytest.MonkeyPatch) -> None:
     ScriptedProvider.reset()
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", ScriptedProvider)
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", ScriptedProvider)
 
 
 @pytest.fixture
@@ -366,7 +366,7 @@ async def test_a_scope_over_the_limit_is_cut_to_the_most_relevant_papers_and_say
 ):
     lunch = await ready_paper(db, await user_id(owner), "Lunch Menu", ["Soup is served at noon."])
     limited = get_settings().model_copy(update={"multi_paper_max_papers": 2})
-    monkeypatch.setattr("scientrag.rag.engine.get_settings", lambda: limited)
+    monkeypatch.setattr("scirag.rag.engine.get_settings", lambda: limited)
     ScriptedProvider.tables = [json.dumps(TABLE)]
     question = "Widget study and gadget study: how are they sorted?"
 

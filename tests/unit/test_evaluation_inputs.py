@@ -1,11 +1,11 @@
 import pytest
 
-from scientrag.chunking.scientific_chunker import chunk_document
-from scientrag.config import get_settings
-from scientrag.evaluation import judges, metrics, report, runner
-from scientrag.evaluation.datasets import qasper
-from scientrag.rag.paths.comparison import NOT_FOUND
-from scientrag.rag.types import Done, Source, Sources
+from scirag.chunking.scientific_chunker import chunk_document
+from scirag.config import get_settings
+from scirag.evaluation import judges, metrics, report, runner
+from scirag.evaluation.datasets import qasper
+from scirag.rag.paths.comparison import NOT_FOUND
+from scirag.rag.types import Done, Source, Sources
 
 PAPER = {
     "title": "A Study of Widgets",

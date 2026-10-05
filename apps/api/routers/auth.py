@@ -8,12 +8,12 @@ from sqlalchemy.exc import IntegrityError
 
 from apps.api.deps import CurrentUser, Db
 from apps.api.schemas.auth import Credentials, UserOut
-from scientrag.auth import login_limiter
-from scientrag.auth.passwords import DUMMY_HASH, hash_password, verify_password
-from scientrag.auth.sessions import COOKIE_NAME, hash_token, new_token
-from scientrag.config import get_settings
-from scientrag.db.repositories import sessions as sessions_repo
-from scientrag.db.repositories import users as users_repo
+from scirag.auth import login_limiter
+from scirag.auth.passwords import DUMMY_HASH, hash_password, verify_password
+from scirag.auth.sessions import COOKIE_NAME, hash_token, new_token
+from scirag.config import get_settings
+from scirag.db.repositories import sessions as sessions_repo
+from scirag.db.repositories import users as users_repo
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

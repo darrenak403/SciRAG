@@ -8,10 +8,10 @@ from fastapi.responses import JSONResponse
 
 from apps.api.middleware import BodySizeLimit
 from apps.api.routers import auth, chats, chunks, collections, health, papers, providers
-from scientrag.auth.secrets import get_fernet
-from scientrag.config import get_settings
-from scientrag.db.engine import get_engine
-from scientrag.telemetry.tracing import get_tracer_provider
+from scirag.auth.secrets import get_fernet
+from scirag.config import get_settings
+from scirag.db.engine import get_engine
+from scirag.telemetry.tracing import get_tracer_provider
 
 
 @asynccontextmanager

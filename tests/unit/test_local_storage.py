@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from scientrag.storage.local import LocalStorage
+from scirag.storage.local import LocalStorage
 
 
 def test_put_then_open_returns_the_same_bytes(tmp_path: Path):

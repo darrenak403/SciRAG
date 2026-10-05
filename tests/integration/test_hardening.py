@@ -7,8 +7,8 @@ from httpx import AsyncClient
 
 from apps.api.main import app
 from apps.api.routers import papers as papers_router
-from scientrag.auth import secrets
-from scientrag.config import get_settings
+from scirag.auth import secrets
+from scirag.config import get_settings
 from tests.conftest import PASSWORD
 from tests.integration.test_papers import stored_files, upload, upload_with
 from tests.integration.test_providers import BEDROCK, ROUTER

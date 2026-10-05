@@ -36,7 +36,7 @@ export function useRecentResearch(): Chat[] | null {
   );
 }
 
-const QUESTION_KEY = "scientrag:first-question:";
+const QUESTION_KEY = "scirag:first-question:";
 
 // What a session asks: the papers named, or whatever a collection holds.
 export type Scope = string[] | { collectionId: string };

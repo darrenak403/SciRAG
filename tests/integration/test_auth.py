@@ -2,10 +2,10 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.auth import login_limiter
-from scientrag.auth.sessions import COOKIE_NAME, hash_token
-from scientrag.config import get_settings
-from scientrag.db.models import Session, User
+from scirag.auth import login_limiter
+from scirag.auth.sessions import COOKIE_NAME, hash_token
+from scirag.config import get_settings
+from scirag.db.models import Session, User
 from tests.conftest import PASSWORD
 
 ALICE = {"email": "alice@example.com", "password": PASSWORD}

@@ -6,12 +6,12 @@ from typing import Annotated
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.auth.sessions import COOKIE_NAME, hash_token
-from scientrag.db.engine import get_sessionmaker
-from scientrag.db.models import User
-from scientrag.db.repositories import sessions as sessions_repo
-from scientrag.storage import get_storage
-from scientrag.storage.base import ObjectStorage
+from scirag.auth.sessions import COOKIE_NAME, hash_token
+from scirag.db.engine import get_sessionmaker
+from scirag.db.models import User
+from scirag.db.repositories import sessions as sessions_repo
+from scirag.storage import get_storage
+from scirag.storage.base import ObjectStorage
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:

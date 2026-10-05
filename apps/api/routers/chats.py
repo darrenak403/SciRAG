@@ -18,18 +18,18 @@ from apps.api.schemas.chats import (
     SourceOut,
 )
 from apps.api.sse import EventStream, event
-from scientrag.access.readable_papers import readable_collection_papers, readable_papers
-from scientrag.db.engine import get_sessionmaker
-from scientrag.db.models import ChatMessage, ChatSession, MessageSource, ProviderConnection
-from scientrag.db.repositories import chats as chats_repo
-from scientrag.db.repositories import collections as collections_repo
-from scientrag.providers.base import Message
-from scientrag.providers.errors import ProviderError
-from scientrag.providers.resolve import active_connection
-from scientrag.rag import citation, engine
-from scientrag.rag.analyzer import HISTORY_MESSAGES
-from scientrag.rag.engine import AskedMode
-from scientrag.rag.types import Delta, Done, Sources, Status, Table
+from scirag.access.readable_papers import readable_collection_papers, readable_papers
+from scirag.db.engine import get_sessionmaker
+from scirag.db.models import ChatMessage, ChatSession, MessageSource, ProviderConnection
+from scirag.db.repositories import chats as chats_repo
+from scirag.db.repositories import collections as collections_repo
+from scirag.providers.base import Message
+from scirag.providers.errors import ProviderError
+from scirag.providers.resolve import active_connection
+from scirag.rag import citation, engine
+from scirag.rag.analyzer import HISTORY_MESSAGES
+from scirag.rag.engine import AskedMode
+from scirag.rag.types import Delta, Done, Sources, Status, Table
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chats", tags=["chats"])

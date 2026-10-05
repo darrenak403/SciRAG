@@ -1,8 +1,8 @@
 import pytest
 
-from scientrag.ingestion.errors import PaperGone, PermanentIngestionError
-from scientrag.ingestion.workflow import failure_of, should_retry
-from scientrag.providers.errors import ProviderError, from_aws, from_http
+from scirag.ingestion.errors import PaperGone, PermanentIngestionError
+from scirag.ingestion.workflow import failure_of, should_retry
+from scirag.providers.errors import ProviderError, from_aws, from_http
 
 
 @pytest.mark.parametrize(

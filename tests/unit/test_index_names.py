@@ -1,6 +1,6 @@
 import uuid
 
-from scientrag.index.qdrant_index import chunks_collection, papers_collection, point_id
+from scirag.index.qdrant_index import chunks_collection, papers_collection, point_id
 
 PAPER = uuid.UUID("01890000-0000-7000-8000-000000000001")
 

@@ -1,5 +1,5 @@
 [project]
-name = "scientrag-cpu-validation-spike"
+name = "scirag-cpu-validation-spike"
 version = "0.0.0"
 description = "Throwaway spike: one paper through parse -> chunk -> embed -> Qdrant -> hybrid search -> rerank on CPU."
 requires-python = ">=3.14,<3.15"

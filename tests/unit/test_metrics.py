@@ -1,6 +1,6 @@
 import pytest
 
-from scientrag.evaluation.metrics import mrr, ndcg_at_k, percentile, recall_at_k, token_f1
+from scirag.evaluation.metrics import mrr, ndcg_at_k, percentile, recall_at_k, token_f1
 
 RANKED = ["a", "b", "c", "d", "e"]
 

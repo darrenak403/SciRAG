@@ -6,10 +6,10 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.access.readable_papers import readable_papers
-from scientrag.db.models import ChatSession, PaperStatus
-from scientrag.index.qdrant_index import chunks_collection
-from scientrag.index.search import search
+from scirag.access.readable_papers import readable_papers
+from scirag.db.models import ChatSession, PaperStatus
+from scirag.index.qdrant_index import chunks_collection
+from scirag.index.search import search
 from tests.rag_factory import (
     CONNECTION,
     DIMENSION,
@@ -36,7 +36,7 @@ async def collections() -> AsyncIterator[None]:
 @pytest.fixture(autouse=True)
 def provider(monkeypatch: pytest.MonkeyPatch) -> None:
     ScriptedProvider.reset()
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", ScriptedProvider)
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", ScriptedProvider)
 
 
 async def find(owner, paper_ids, question: str = QUESTION):

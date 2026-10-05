@@ -13,13 +13,13 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.chunking.scientific_chunker import CHUNKING_VERSION
-from scientrag.db.models import Chunk, Paper, PaperStatus
-from scientrag.index import qdrant_index
-from scientrag.providers.base import Usage
-from scientrag.providers.defaults import models_for
-from scientrag.providers.errors import ProviderError
-from scientrag.rag import prompts
+from scirag.chunking.scientific_chunker import CHUNKING_VERSION
+from scirag.db.models import Chunk, Paper, PaperStatus
+from scirag.index import qdrant_index
+from scirag.providers.base import Usage
+from scirag.providers.defaults import models_for
+from scirag.providers.errors import ProviderError
+from scirag.rag import prompts
 
 # Model names no other run uses, so the collections made here can be dropped afterwards.
 EMBEDDING_MODEL = f"test-chat-embedding-{uuid.uuid4().hex[:8]}"

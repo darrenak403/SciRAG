@@ -1,5 +1,5 @@
 [project]
-name = "scientrag"
+name = "scirag"
 version = "0.1.0"
 description = "Question answering over scientific papers with citations."
 requires-python = ">=3.14,<3.15"

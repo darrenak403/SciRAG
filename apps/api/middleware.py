@@ -2,7 +2,7 @@ from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from scientrag.config import get_settings
+from scirag.config import get_settings
 
 # Room for the multipart framing around the largest file allowed.
 FORM_OVERHEAD_BYTES = 1024 * 1024

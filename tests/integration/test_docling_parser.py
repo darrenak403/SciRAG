@@ -6,8 +6,8 @@ import pytest
 
 pytest.importorskip("docling")
 
-from scientrag.ingestion.errors import PermanentIngestionError  # noqa: E402
-from scientrag.parsing.docling_parser import check_pdf, parse_pdf  # noqa: E402
+from scirag.ingestion.errors import PermanentIngestionError  # noqa: E402
+from scirag.parsing.docling_parser import check_pdf, parse_pdf  # noqa: E402
 from tests.conftest import pdf_bytes  # noqa: E402
 from tests.pdf_factory import text_pdf  # noqa: E402
 

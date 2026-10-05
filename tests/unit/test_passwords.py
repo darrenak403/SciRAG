@@ -1,4 +1,4 @@
-from scientrag.auth.passwords import DUMMY_HASH, hash_password, verify_password
+from scirag.auth.passwords import DUMMY_HASH, hash_password, verify_password
 
 
 def test_hash_is_argon2id_and_salted():

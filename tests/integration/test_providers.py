@@ -2,11 +2,11 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.auth.secrets import decrypt_secret
-from scientrag.db.models import ProviderConnection
-from scientrag.providers.base import Usage
-from scientrag.providers.capabilities import check_connection
-from scientrag.providers.errors import ProviderError
+from scirag.auth.secrets import decrypt_secret
+from scirag.db.models import ProviderConnection
+from scirag.providers.base import Usage
+from scirag.providers.capabilities import check_connection
+from scirag.providers.errors import ProviderError
 
 # Made-up values in the shape of real credentials.
 GEMINI_KEY = "test-gemini-key-0000-abcd"
@@ -226,8 +226,8 @@ async def test_the_tokens_spent_testing_a_new_connection_are_counted(
         provider.usage.append(Usage("fast", "small-model", 7, 3))
         return {"usable": True, "checks": []}
 
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", lambda connection: Provider())
-    monkeypatch.setattr("scientrag.providers.capabilities.check_provider", check_provider)
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", lambda connection: Provider())
+    monkeypatch.setattr("scirag.providers.capabilities.check_provider", check_provider)
     monkeypatch.setattr("apps.api.routers.providers.check_connection", check_connection)
 
     connection = await create(alice, GEMINI)
@@ -284,7 +284,7 @@ async def test_listing_models_reports_a_provider_failure(alice: AsyncClient, mon
         async def aclose(self) -> None:
             pass
 
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", lambda connection: Provider())
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", lambda connection: Provider())
     connection = await create(alice, GEMINI)
     url = f"/settings/providers/{connection['id']}/models"
 

@@ -1,4 +1,4 @@
-from scientrag.rag.citation import plain, validate, without_markers
+from scirag.rag.citation import plain, validate, without_markers
 
 VALID = {"S1", "S2", "S3"}
 

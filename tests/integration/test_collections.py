@@ -25,7 +25,7 @@ async def index() -> AsyncIterator[None]:
 @pytest.fixture(autouse=True)
 def provider(monkeypatch: pytest.MonkeyPatch) -> None:
     ScriptedProvider.reset()
-    monkeypatch.setattr("scientrag.providers.resolve.build_provider", ScriptedProvider)
+    monkeypatch.setattr("scirag.providers.resolve.build_provider", ScriptedProvider)
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import json
 
-from scientrag.ingestion.steps import DOI, _clean_metadata, _summary_input
-from scientrag.parsing.document import Block, ScientificDocument, Section
+from scirag.ingestion.steps import DOI, _clean_metadata, _summary_input
+from scirag.parsing.document import Block, ScientificDocument, Section
 
 
 def clean(value) -> dict:

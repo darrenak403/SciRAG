@@ -1,7 +1,7 @@
 import uuid
 from types import SimpleNamespace
 
-from scientrag.index import search as index_search
+from scirag.index import search as index_search
 
 PAPER = uuid.uuid4()
 FIRST, SECOND, THIRD = sorted(uuid.uuid4() for _ in range(3))

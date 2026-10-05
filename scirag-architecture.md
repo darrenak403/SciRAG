@@ -396,7 +396,7 @@ Dựng bộ đánh giá trước khi tối ưu bất kỳ thứ gì.
 
 ## 10. Observability
 
-API phát trace bằng OpenTelemetry và gửi tới Phoenix (project `scientrag`). Mỗi câu hỏi là một trace, mỗi bước là một span: `analyze_question` hoặc `rewrite_question`, `embed_query`, `retrieve`, `rerank`, `gather_evidence` (câu tổng hợp), `generate`. Span ghi câu truy vấn, các chunk tìm được, model và số token.
+API phát trace bằng OpenTelemetry và gửi tới Phoenix (project `scirag`). Mỗi câu hỏi là một trace, mỗi bước là một span: `analyze_question` hoặc `rewrite_question`, `embed_query`, `retrieve`, `rerank`, `gather_evidence` (câu tổng hợp), `generate`. Span ghi câu truy vấn, các chunk tìm được, model và số token.
 
 `trace_id` được lưu cùng câu trả lời (`chat_messages.trace_id`), và `chat_messages.retrieval` giữ số liệu của lượt đó: loại câu hỏi, câu truy vấn đã viết lại, số paper và số ứng viên ở từng bước, model, thời gian tới lúc tìm xong và tới chữ đầu tiên, số token. `GET /chats/messages/{id}/retrieval` trả lại chúng; giao diện hiện ở "Retrieval details" khi bật advanced.
 
@@ -413,7 +413,7 @@ SciRAG/
 │   │                   providers), schemas, SSE, giới hạn kích thước upload
 │   ├── worker/         điểm khởi động worker DBOS
 │   └── web/            Next.js: app (các trang), components, lib (gọi API, SSE, upload)
-├── src/scientrag/
+├── src/scirag/
 │   ├── config.py       mọi tham số, đọc từ biến môi trường
 │   ├── db/             SQLAlchemy models, repositories, migrations (Alembic)
 │   ├── auth/           mật khẩu, phiên đăng nhập, mã hoá key, giới hạn đăng nhập sai

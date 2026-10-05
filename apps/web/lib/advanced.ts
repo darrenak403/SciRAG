@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 // it was cut into, how the passages behind an answer were found. Kept in this
 // browser only. It changes what is shown, never what the account may read.
 
-const KEY = "scientrag:advanced";
+const KEY = "scirag:advanced";
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {

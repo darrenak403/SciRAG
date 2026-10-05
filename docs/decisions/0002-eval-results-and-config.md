@@ -1,7 +1,7 @@
 # 0002 — Kết quả đo chất lượng và cấu hình chốt
 
 - Ngày đo: 2026-10-04, code ở commit `ac9def2` cộng các thay đổi của bộ đo.
-- Lệnh: `python -m scientrag.evaluation.run --config eval/configs/<tên>.toml` (xem README, mục "Đo chất lượng"). File kết quả nằm trong `eval-results/` (không commit).
+- Lệnh: `python -m scirag.evaluation.run --config eval/configs/<tên>.toml` (xem README, mục "Đo chất lượng"). File kết quả nằm trong `eval-results/` (không commit).
 - Model: Gemini, `gemini-3.5-flash` (trả lời và giám khảo), `gemini-3.5-flash-lite` (rerank), `gemini-embedding-2` (embedding).
 - Trạng thái: đủ để chốt cấu hình. Một số thí nghiệm bị cắt bớt vì key hết hạn mức giữa chừng; liệt kê ở mục "Chưa đo".
 

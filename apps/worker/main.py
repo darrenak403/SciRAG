@@ -4,15 +4,16 @@ import threading
 
 from dbos import DBOS
 
-from scientrag.auth.secrets import get_fernet
-from scientrag.config import get_settings
-from scientrag.ingestion import workflow  # noqa: F401  (registers the workflows and the queue)
-from scientrag.ingestion.queue import APPLICATION_VERSION, INGEST_QUEUE, system_database_url
+from scirag.auth.secrets import get_fernet
+from scirag.config import get_settings
+from scirag.ingestion import workflow  # noqa: F401  (registers the workflows and the queue)
+from scirag.ingestion.queue import APPLICATION_VERSION, INGEST_QUEUE, system_database_url
 
 
 def launch() -> None:
     DBOS(
         config={
+            # The name the workflow tables were created under: the engine refuses another.
             "name": "scientrag",
             "system_database_url": system_database_url(),
             "application_version": APPLICATION_VERSION,

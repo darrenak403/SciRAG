@@ -1,4 +1,4 @@
-from scientrag.auth import login_limiter
+from scirag.auth import login_limiter
 
 
 def test_blocks_after_the_maximum_number_of_failures():

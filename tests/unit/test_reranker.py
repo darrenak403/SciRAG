@@ -1,6 +1,6 @@
 import pytest
 
-from scientrag.rag.reranker import parse_ranking, rerank
+from scirag.rag.reranker import parse_ranking, rerank
 
 
 @pytest.mark.parametrize(

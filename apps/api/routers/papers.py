@@ -25,14 +25,14 @@ from apps.api.schemas.papers import (
     SectionOut,
 )
 from apps.api.schemas.text import Text
-from scientrag.config import get_settings
-from scientrag.db.models import Paper, PaperStatus, User
-from scientrag.db.repositories import ingestion as ingestion_repo
-from scientrag.db.repositories import papers as papers_repo
-from scientrag.db.repositories import provider_connections as connections_repo
-from scientrag.db.repositories.papers import SortField, SortOrder
-from scientrag.ingestion import queue
-from scientrag.providers.defaults import models_for
+from scirag.config import get_settings
+from scirag.db.models import Paper, PaperStatus, User
+from scirag.db.repositories import ingestion as ingestion_repo
+from scirag.db.repositories import papers as papers_repo
+from scirag.db.repositories import provider_connections as connections_repo
+from scirag.db.repositories.papers import SortField, SortOrder
+from scirag.ingestion import queue
+from scirag.providers.defaults import models_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/papers", tags=["papers"])

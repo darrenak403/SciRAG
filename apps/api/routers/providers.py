@@ -18,14 +18,14 @@ from apps.api.schemas.providers import (
     RagConfigOut,
     UsageRow,
 )
-from scientrag.auth.secrets import encrypt_secret
-from scientrag.config import get_settings
-from scientrag.db.models import ProviderConnection
-from scientrag.db.repositories import provider_connections as connections_repo
-from scientrag.db.repositories import provider_usage as usage_repo
-from scientrag.providers.capabilities import check_connection
-from scientrag.providers.errors import ProviderError
-from scientrag.providers.resolve import connection_provider
+from scirag.auth.secrets import encrypt_secret
+from scirag.config import get_settings
+from scirag.db.models import ProviderConnection
+from scirag.db.repositories import provider_connections as connections_repo
+from scirag.db.repositories import provider_usage as usage_repo
+from scirag.providers.capabilities import check_connection
+from scirag.providers.errors import ProviderError
+from scirag.providers.resolve import connection_provider
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

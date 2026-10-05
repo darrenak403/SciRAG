@@ -19,15 +19,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.worker.main import launch
-from scientrag.config import get_settings
-from scientrag.db.models import Chunk, IngestionRun, Paper, PaperSection, ProviderUsage
-from scientrag.index import qdrant_index
-from scientrag.ingestion import steps, workflow
-from scientrag.ingestion.errors import PermanentIngestionError
-from scientrag.parsing.document import Block, ScientificDocument, Section
-from scientrag.providers.base import Usage
-from scientrag.providers.defaults import models_for
-from scientrag.providers.errors import ProviderError
+from scirag.config import get_settings
+from scirag.db.models import Chunk, IngestionRun, Paper, PaperSection, ProviderUsage
+from scirag.index import qdrant_index
+from scirag.ingestion import steps, workflow
+from scirag.ingestion.errors import PermanentIngestionError
+from scirag.parsing.document import Block, ScientificDocument, Section
+from scirag.providers.base import Usage
+from scirag.providers.defaults import models_for
+from scirag.providers.errors import ProviderError
 from tests.conftest import pdf_bytes
 
 # A model name no other run uses, so the collections made here can be dropped afterwards.
@@ -147,11 +147,11 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
         queued.append(("delete", paper_id))
         return True
 
-    monkeypatch.setattr("scientrag.ingestion.queue.enqueue_ingest", enqueue_ingest)
-    monkeypatch.setattr("scientrag.ingestion.queue.enqueue_delete", enqueue_delete)
+    monkeypatch.setattr("scirag.ingestion.queue.enqueue_ingest", enqueue_ingest)
+    monkeypatch.setattr("scirag.ingestion.queue.enqueue_delete", enqueue_delete)
     monkeypatch.setattr(steps, "parse_document", lambda storage_key: sample_document())
     monkeypatch.setattr(
-        "scientrag.providers.resolve.build_provider",
+        "scirag.providers.resolve.build_provider",
         lambda connection: FakeProvider(
             models_for(connection.kind, connection.config.get("models", {}))
         ),

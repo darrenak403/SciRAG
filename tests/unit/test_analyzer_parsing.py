@@ -6,12 +6,12 @@ import uuid
 
 import pytest
 
-from scientrag.providers.errors import ProviderError
-from scientrag.rag import evidence_summarizer
-from scientrag.rag.analyzer import parse_analysis
-from scientrag.rag.evidence_summarizer import Evidence, parse_evidence
-from scientrag.rag.paths.comparison import NOT_FOUND, NOT_STATED, parse_table
-from scientrag.rag.types import Source
+from scirag.providers.errors import ProviderError
+from scirag.rag import evidence_summarizer
+from scirag.rag.analyzer import parse_analysis
+from scirag.rag.evidence_summarizer import Evidence, parse_evidence
+from scirag.rag.paths.comparison import NOT_FOUND, NOT_STATED, parse_table
+from scirag.rag.types import Source
 
 QUESTION = "How do they differ?"
 

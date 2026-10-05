@@ -1,5 +1,5 @@
-from scientrag.chunking.scientific_chunker import chunk_document, count_tokens
-from scientrag.parsing.document import Block, ScientificDocument, Section
+from scirag.chunking.scientific_chunker import chunk_document, count_tokens
+from scirag.parsing.document import Block, ScientificDocument, Section
 
 BOX = (0.1, 0.2, 0.9, 0.3)
 

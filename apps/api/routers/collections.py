@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from apps.api.deps import CurrentUser, Db
 from apps.api.schemas.collections import CollectionCreate, CollectionOut, CollectionUpdate
-from scientrag.access.readable_papers import readable_papers
-from scientrag.db.models import Collection
-from scientrag.db.repositories import collections as collections_repo
+from scirag.access.readable_papers import readable_papers
+from scirag.db.models import Collection
+from scirag.db.repositories import collections as collections_repo
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 

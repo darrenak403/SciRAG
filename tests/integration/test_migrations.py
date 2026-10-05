@@ -4,9 +4,9 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from sqlalchemy import create_engine, inspect
 
-import scientrag.db.models  # noqa: F401  (registers the tables on Base.metadata)
-from scientrag.config import get_settings
-from scientrag.db.base import Base
+import scirag.db.models  # noqa: F401  (registers the tables on Base.metadata)
+from scirag.config import get_settings
+from scirag.db.base import Base
 
 
 def test_migrations_produce_the_schema_the_models_describe():

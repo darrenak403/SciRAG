@@ -7,10 +7,10 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from scientrag.config import get_settings
-from scientrag.providers.errors import ProviderError
-from scientrag.providers.http import allowed_address
-from scientrag.providers.openai_compatible import OpenAICompatibleProvider
+from scirag.config import get_settings
+from scirag.providers.errors import ProviderError
+from scirag.providers.http import allowed_address
+from scirag.providers.openai_compatible import OpenAICompatibleProvider
 
 KEY = "test-router-key-12345678"
 
@@ -182,7 +182,7 @@ async def test_a_rate_limit_is_retried_after_the_wait_the_provider_asks_for(
     async def sleep(seconds: float) -> None:
         waits.append(seconds)
 
-    monkeypatch.setattr("scientrag.providers.base.asyncio.sleep", sleep)
+    monkeypatch.setattr("scirag.providers.base.asyncio.sleep", sleep)
     limited = {
         "error": {
             "message": "You exceeded your current quota, please check your plan and billing",

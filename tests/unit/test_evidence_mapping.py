@@ -1,4 +1,4 @@
-from scientrag.evaluation.evidence_mapping import coverage, covering_chunks
+from scirag.evaluation.evidence_mapping import coverage, covering_chunks
 
 PASSAGE = (
     "We train the model on the WMT 2014 English-German dataset consisting of about 4.5 million "

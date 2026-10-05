@@ -2,8 +2,8 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from scientrag.providers.capabilities import check_provider
-from scientrag.providers.errors import ProviderError
+from scirag.providers.capabilities import check_provider
+from scirag.providers.errors import ProviderError
 
 
 class FakeProvider:

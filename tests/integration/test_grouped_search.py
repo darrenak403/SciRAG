@@ -6,8 +6,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scientrag.index.qdrant_index import chunks_collection
-from scientrag.index.search import search, search_grouped, search_papers
+from scirag.index.qdrant_index import chunks_collection
+from scirag.index.search import search, search_grouped, search_papers
 from tests.rag_factory import (
     DIMENSION,
     EMBEDDING_MODEL,

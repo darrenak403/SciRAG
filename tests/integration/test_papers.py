@@ -3,8 +3,8 @@ from pathlib import Path
 from httpx import AsyncClient, Response
 
 from apps.api.deps import get_storage
-from scientrag.config import get_settings
-from scientrag.ingestion import queue
+from scirag.config import get_settings
+from scirag.ingestion import queue
 from tests.conftest import pdf_bytes
 
 
